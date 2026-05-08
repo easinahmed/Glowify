@@ -10,6 +10,12 @@ import ProductDetails from './pages/ProductDetails';
 import ErrorPage from './pages/ErrorPage';
 import AuthLayout from './layout/AuthLayout';
 import MainLayout from './layout/MainLayout';
+import Cart from './pages/Cart';
+import Dashboard from './pages/user/Dashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminOrders from './pages/admin/AdminOrders';
+import Customers from './pages/admin/Customers';
+import Inventory from './pages/admin/Inventory';
 
 
 const router = createBrowserRouter([
@@ -26,6 +32,20 @@ const router = createBrowserRouter([
     ]
   },
   {
+    path: "/admin",
+    Component: () => (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: "dashboard", Component: AdminDashboard },
+      { path: "orders", Component: AdminOrders },
+      { path: "customers", Component: Customers },
+      { path: "inventory", Component: Inventory },
+    ]
+  },
+  {
     path: "/",
     Component: () => (
       <ProtectedRoute>
@@ -36,6 +56,8 @@ const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "/shop", Component: Shop },
       { path: "/shop/:id", Component: ProductDetails },
+      { path: "/user/cart", Component: Cart },
+      { path: "/user/dashboard", Component: Dashboard },
     ]
   },
   { path: "*", Component: ErrorPage }

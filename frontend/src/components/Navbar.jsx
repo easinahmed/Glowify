@@ -115,7 +115,9 @@ export default function Navbar() {
             </button>
 
             {/* Cart */}
-            <button
+            <Link
+              to="/user/cart"
+              className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               className="relative w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               style={{ color: "#2e2420" }}
               aria-label="Cart"
@@ -130,11 +132,11 @@ export default function Navbar() {
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <path d="M16 10a4 4 0 01-8 0" />
               </svg>
-            </button>
+            </Link>
 
             {/* Account */}
             <Link
-              to="/auth/login"
+              to="/user/dashboard"
               className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               style={{ color: "#2e2420" }}
               aria-label="Account"
