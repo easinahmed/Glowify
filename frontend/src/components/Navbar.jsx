@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap');
@@ -117,7 +117,6 @@ export default function Navbar() {
             {/* Cart */}
             <Link
               to="/user/cart"
-              className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               className="relative w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               style={{ color: "#2e2420" }}
               aria-label="Cart"
@@ -136,7 +135,14 @@ export default function Navbar() {
 
             {/* Account */}
             <Link
-              to="/user/dashboard"
+              to={(() => {
+                try {
+                  const stored = JSON.parse(localStorage.getItem('authUser') || 'null');
+                  return stored?.role === 'admin' ? '/admin/dashboard' : '/user/dashboard';
+                } catch {
+                  return '/user/dashboard';
+                }
+              })()}
               className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
               style={{ color: "#2e2420" }}
               aria-label="Account"
