@@ -12,43 +12,67 @@ import {
   Eye,
   X
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { fetchProducts, addProduct, updateProduct, deleteProduct } from '../../api/api'
 
 export default function Inventory() {
-  const [inventory, setInventory] = useState([
-    {
-      id: "GLO-001",
-      name: "Velvet Milk Cleanser",
-      category: "Cleanser",
-      stock: 87,
-      price: 48,
-      image: "https://picsum.photos/id/1015/80/80"
+  const queryClient = useQueryClient()
+
+  const { data: products = [], isLoading, error } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProducts
+  })
+
+  const addProductMutation = useMutation({
+    mutationFn: addProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setIsModalOpen(false)
+      setEditingProduct(null)
+      setFormData({
+        name: "",
+        category: "",
+        stock: 0,
+        price: 0,
+        image: "",
+        description: ""
+      })
     },
-    {
-      id: "GLO-002",
-      name: "Dew Drop Serum",
-      category: "Serum",
-      stock: 12,
-      price: 65,
-      image: "https://picsum.photos/id/106/80/80"
+    onError: (error) => {
+      alert('Failed to add product: ' + error.message)
+    }
+  })
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }) => updateProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setIsModalOpen(false)
+      setEditingProduct(null)
+      setFormData({
+        name: "",
+        category: "",
+        stock: 0,
+        price: 0,
+        image: "",
+        description: ""
+      })
     },
-    {
-      id: "GLO-003",
-      name: "Ceramic Barrier Cream",
-      category: "Moisturizer",
-      stock: 0,
-      price: 52,
-      image: "https://picsum.photos/id/201/80/80"
+    onError: (error) => {
+      alert('Failed to update product: ' + error.message)
+    }
+  })
+
+  const deleteProductMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
     },
-    {
-      id: "GLO-004",
-      name: "Morning Ritual Oil",
-      category: "Oil",
-      stock: 45,
-      price: 78,
-      image: "https://picsum.photos/id/133/80/80"
-    },
-  ]);
+    onError: (error) => {
+      alert('Failed to delete product: ' + error.message)
+    }
+  })
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -57,18 +81,18 @@ export default function Inventory() {
 
   const [formData, setFormData] = useState({
     name: "",
-    id: "",
     category: "",
     stock: 0,
     price: 0,
-    image: "https://picsum.photos/id/1015/80/80"
+    image: "",
+    description: ""
   });
 
   // Filter products
-  const filteredInventory = inventory
+  const filteredInventory = products
     .filter(item => 
       (item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       item.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
+       item._id.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (filterStatus === "All" || 
        (item.stock === 0 ? "Out of Stock" : item.stock < 20 ? "Low Stock" : "In Stock") === filterStatus)
     );
@@ -84,11 +108,11 @@ export default function Inventory() {
     setEditingProduct(null);
     setFormData({
       name: "",
-      id: `GLO-${String(Date.now()).slice(-4)}`,
-      category: "Cleanser",
+      category: "CLEANSER",
       stock: 10,
       price: 45,
-      image: "https://picsum.photos/id/1015/80/80"
+      image: "",
+      description: ""
     });
     setIsModalOpen(true);
   };
@@ -96,31 +120,32 @@ export default function Inventory() {
   // Open modal for Edit
   const openEditModal = (product) => {
     setEditingProduct(product);
-    setFormData(product);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      stock: product.stock,
+      price: product.price,
+      image: product.image,
+      description: product.description
+    });
     setIsModalOpen(true);
   };
 
-  // Save product (Create or Update)
+  // Save product
   const handleSave = () => {
-    if (!formData.name || !formData.id) return alert("Name and SKU are required");
+    if (!formData.name || !formData.price) return alert("Name and price are required");
 
     if (editingProduct) {
-      // Update
-      setInventory(inventory.map(item => 
-        item.id === editingProduct.id ? formData : item
-      ));
+      updateProductMutation.mutate({ id: editingProduct._id, data: formData });
     } else {
-      // Create
-      setInventory([...inventory, formData]);
+      addProductMutation.mutate(formData);
     }
-    
-    setIsModalOpen(false);
   };
 
   // Delete product
-  const handleDelete = (id) => {
+  const handleDelete = (productId) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
-      setInventory(inventory.filter(item => item.id !== id));
+      deleteProductMutation.mutate(productId);
     }
   };
 
@@ -176,24 +201,24 @@ export default function Inventory() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">TOTAL PRODUCTS</p>
-              <p className="text-4xl font-semibold mt-3">{inventory.length}</p>
+              <p className="text-4xl font-semibold mt-3">{products.length}</p>
             </div>
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">LOW STOCK</p>
               <p className="text-4xl font-semibold mt-3 text-orange-600">
-                {inventory.filter(p => p.stock > 0 && p.stock < 20).length}
+                {products.filter(p => p.stock > 0 && p.stock < 20).length}
               </p>
             </div>
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">OUT OF STOCK</p>
               <p className="text-4xl font-semibold mt-3 text-red-600">
-                {inventory.filter(p => p.stock === 0).length}
+                {products.filter(p => p.stock === 0).length}
               </p>
             </div>
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">TOTAL VALUE</p>
               <p className="text-4xl font-semibold mt-3">
-                ${inventory.reduce((sum, p) => sum + p.price * p.stock, 0)}
+                ${products.reduce((sum, p) => sum + p.price * p.stock, 0)}
               </p>
             </div>
           </div>
@@ -228,53 +253,71 @@ export default function Inventory() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-sm text-gray-500">
-                    <th className="px-6 py-5 font-medium">PRODUCT</th>
-                    <th className="px-6 py-5 font-medium">SKU</th>
-                    <th className="px-6 py-5 font-medium">CATEGORY</th>
-                    <th className="px-6 py-5 font-medium">STOCK</th>
-                    <th className="px-6 py-5 font-medium">PRICE</th>
-                    <th className="px-6 py-5 font-medium">STATUS</th>
-                    <th className="px-6 py-5 font-medium text-center">ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInventory.map((item) => {
-                    const status = getStockStatus(item.stock);
-                    return (
-                      <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <img src={item.image} alt={item.name} className="w-12 h-12 rounded-2xl object-cover" />
-                            <span className="font-medium">{item.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 font-mono text-gray-600">{item.id}</td>
-                        <td className="px-6 py-5 text-gray-600">{item.category}</td>
-                        <td className="px-6 py-5 font-semibold">{item.stock} units</td>
-                        <td className="px-6 py-5 font-semibold">${item.price}</td>
-                        <td className="px-6 py-5">
-                          <span className={`inline-block px-4 py-1 text-xs font-medium rounded-full ${status.color}`}>
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-center gap-4">
-                            <button onClick={() => openEditModal(item)} className="text-gray-400 hover:text-blue-600 transition-colors">
-                              <Edit2 className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 transition-colors">
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {isLoading ? (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500">Loading products...</div>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center">
+                  <div className="text-red-500">Error loading products: {error.message}</div>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-left text-sm text-gray-500">
+                      <th className="px-6 py-5 font-medium">PRODUCT</th>
+                      <th className="px-6 py-5 font-medium">SKU</th>
+                      <th className="px-6 py-5 font-medium">CATEGORY</th>
+                      <th className="px-6 py-5 font-medium">STOCK</th>
+                      <th className="px-6 py-5 font-medium">PRICE</th>
+                      <th className="px-6 py-5 font-medium">STATUS</th>
+                      <th className="px-6 py-5 font-medium text-center">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInventory.map((item) => {
+                      const status = getStockStatus(item.stock);
+                      return (
+                        <tr key={item._id} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              <img src={item.image} alt={item.name} className="w-12 h-12 rounded-2xl object-cover" />
+                              <span className="font-medium">{item.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 font-mono text-gray-600">{item._id}</td>
+                          <td className="px-6 py-5 text-gray-600">{item.category}</td>
+                          <td className="px-6 py-5 font-semibold">{item.stock} units</td>
+                          <td className="px-6 py-5 font-semibold">${item.price}</td>
+                          <td className="px-6 py-5">
+                            <span className={`inline-block px-4 py-1 text-xs font-medium rounded-full ${status.color}`}>
+                              {status.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center justify-center gap-4">
+                              <button 
+                                onClick={() => openEditModal(item)}
+                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                disabled={deleteProductMutation.isPending}
+                              >
+                                <Edit2 className="w-5 h-5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(item._id)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                disabled={deleteProductMutation.isPending}
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
@@ -304,16 +347,17 @@ export default function Inventory() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
+                  rows="3"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">SKU</label>
-                  <input
-                    type="text"
-                    value={formData.id}
-                    onChange={(e) => setFormData({...formData, id: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Category</label>
                   <select
@@ -321,16 +365,13 @@ export default function Inventory() {
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
                   >
-                    <option>Cleanser</option>
-                    <option>Serum</option>
-                    <option>Moisturizer</option>
-                    <option>Oil</option>
-                    <option>Toner</option>
+                    <option>CLEANSER</option>
+                    <option>SERUM</option>
+                    <option>MOISTURIZER</option>
+                    <option>RITUAL</option>
+                    <option>TONER</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Stock</label>
                   <input
@@ -340,6 +381,9 @@ export default function Inventory() {
                     className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Price ($)</label>
                   <input
@@ -349,16 +393,15 @@ export default function Inventory() {
                     className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Image URL</label>
-                <input
-                  type="text"
-                  value={formData.image}
-                  onChange={(e) => setFormData({...formData, image: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
-                />
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Image URL</label>
+                  <input
+                    type="text"
+                    value={formData.image}
+                    onChange={(e) => setFormData({...formData, image: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
+                  />
+                </div>
               </div>
             </div>
 
@@ -366,14 +409,18 @@ export default function Inventory() {
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-3.5 border border-gray-300 rounded-2xl font-medium hover:bg-gray-50"
+                disabled={addProductMutation.isPending || updateProductMutation.isPending}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleSave}
-                className="flex-1 py-3.5 bg-rose-600 text-white rounded-2xl font-medium hover:bg-rose-700"
+                disabled={addProductMutation.isPending || updateProductMutation.isPending}
+                className="flex-1 py-3.5 bg-rose-600 text-white rounded-2xl font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {editingProduct ? "Update Product" : "Add Product"}
+                {addProductMutation.isPending || updateProductMutation.isPending 
+                  ? "Saving..." 
+                  : editingProduct ? "Update Product" : "Add Product"}
               </button>
             </div>
           </div>

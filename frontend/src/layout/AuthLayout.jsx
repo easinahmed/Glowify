@@ -1,14 +1,9 @@
-import { Outlet } from "react-router"
-import Navbar from "../components/Navbar"
-import Footer from "../components/Footer"
-
+import { Outlet } from 'react-router-dom'
 
 const AuthLayout = () => {
   return (
     <>
-       
-       <Outlet/>
-       
+      <Outlet />
     </>
   )
 }

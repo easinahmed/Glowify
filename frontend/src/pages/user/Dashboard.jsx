@@ -1,6 +1,8 @@
 
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
   Package, 
   Clock, 
@@ -10,19 +12,67 @@ import {
   LogOut,
   Droplet
 } from 'lucide-react';
+import { getCurrentUser, logoutUser } from '../../api/api';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser,
+    onSuccess: (response) => {
+      if (response?.user) {
+        localStorage.setItem('authUser', JSON.stringify(response.user));
+      }
+    },
+    retry: false,
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: logoutUser,
+    onSuccess: () => {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      navigate('/auth/login');
+    },
+  });
+
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('authUser') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+
+  const user = data?.user || storedUser || { username: 'Guest', role: 'user' };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfaf7] p-6 font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-10">
           <h1 className="text-4xl font-semibold text-gray-900">
-            Welcome back, <span className="text-rose-600">Elara</span>
+            Welcome back, <span className="text-rose-600">{user.username || user.email || 'there'}</span>
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
             Your personalized dashboard for restorative self-care and your unique skin journey.
           </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Role: <span className="font-medium text-gray-700">{user.role?.toUpperCase()}</span>
+          </p>
+          {user.role === 'admin' && (
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="mt-4 inline-flex items-center justify-center rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-black transition-colors"
+            >
+              Go to Admin Panel
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -168,9 +218,13 @@ export default function Dashboard() {
 
                 <div className="h-px bg-gray-100 my-4" />
 
-                <button className="w-full flex items-center gap-4 hover:bg-red-50 px-5 py-4 rounded-2xl text-left text-red-600 hover:text-red-700 transition-colors group">
+                <button
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isLoading}
+                  className="w-full flex items-center gap-4 hover:bg-red-50 px-5 py-4 rounded-2xl text-left text-red-600 hover:text-red-700 transition-colors group"
+                >
                   <LogOut className="w-5 h-5" />
-                  <span className="flex-1 font-medium">Log Out</span>
+                  <span className="flex-1 font-medium">{logoutMutation.isLoading ? 'Logging Out...' : 'Log Out'}</span>
                 </button>
               </div>
             </div>

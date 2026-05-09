@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { signupUser } from '../../api/api'
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -23,11 +25,25 @@ const styles = `
 const SKIN_TYPES = ["Oily", "Dry", "Combination", "Sensitive"];
 
 export default function Signup() {
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [skinType, setSkinType] = useState("Combination");
+  const navigate = useNavigate();
+
+  const signupMutation = useMutation({
+    mutationFn: signupUser,
+    onSuccess: (data) => {
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('authUser', JSON.stringify(data.user));
+      navigate('/');
+    },
+  });
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    signupMutation.mutate({ username, email, password });
+  };
 
   return (
     <>
@@ -59,21 +75,21 @@ export default function Signup() {
           </div>
 
           {/* Fields */}
-          <div className="flex flex-col gap-8">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-8">
 
-            {/* Full Name */}
+            {/* Username */}
             <div className="flex flex-col gap-1.5 anim-2">
               <label
                 className="text-[10px] tracking-[0.16em] uppercase"
                 style={{ fontFamily: "'Jost', sans-serif", color: "#9e8a85" }}
               >
-                Full Name
+                Username
               </label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Julianne Moore"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="username"
                 className="w-full border-0 border-b pb-3 text-sm bg-transparent"
                 style={{
                   fontFamily: "'Jost', sans-serif",
@@ -81,6 +97,7 @@ export default function Signup() {
                   color: "#3d2f2c",
                   fontSize: "15px",
                 }}
+                required
               />
             </div>
 
@@ -96,7 +113,7 @@ export default function Signup() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ritual@zenapothecary.com"
+                placeholder="your@email.com"
                 className="w-full border-0 pb-3 text-sm bg-transparent"
                 style={{
                   fontFamily: "'Jost', sans-serif",
@@ -104,6 +121,7 @@ export default function Signup() {
                   color: "#3d2f2c",
                   fontSize: "15px",
                 }}
+                required
               />
             </div>
 
@@ -128,8 +146,10 @@ export default function Signup() {
                     color: "#3d2f2c",
                     fontSize: "15px",
                   }}
+                  required
                 />
                 <button
+                  type="button"
                   onClick={() => setShowPass((s) => !s)}
                   className="absolute right-0 bottom-3 text-[10px] tracking-wider uppercase cursor-pointer"
                   style={{ fontFamily: "'Jost', sans-serif", color: "#b09a94" }}
@@ -139,40 +159,11 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Skin Type */}
-            <div className="flex flex-col gap-4 anim-5">
-              <label
-                className="text-[10px] tracking-[0.16em] uppercase"
-                style={{ fontFamily: "'Jost', sans-serif", color: "#9e8a85" }}
-              >
-                Select Your Skin Type
-              </label>
-              <div className="flex flex-wrap gap-3">
-                {SKIN_TYPES.map((type) => {
-                  const active = skinType === type;
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => setSkinType(type)}
-                      className="rounded-full px-5 py-2 text-xs tracking-wider cursor-pointer transition-all duration-200"
-                      style={{
-                        fontFamily: "'Jost', sans-serif",
-                        border: active ? "1px solid #a89088" : "1px solid #d4c4be",
-                        background: active ? "rgba(168,144,136,0.15)" : "transparent",
-                        color: active ? "#5a4540" : "#9e8a85",
-                        fontWeight: active ? "500" : "300",
-                      }}
-                    >
-                      {type}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Create Account Button */}
-            <div className="anim-6 mt-2">
+            <div className="anim-5 mt-2">
               <button
+                type="submit"
+                disabled={signupMutation.isLoading}
                 className="w-full py-5 rounded-xl text-xs tracking-[0.22em] uppercase cursor-pointer transition-all duration-250 hover:brightness-95 active:scale-[0.99]"
                 style={{
                   fontFamily: "'Jost', sans-serif",
@@ -181,9 +172,17 @@ export default function Signup() {
                   fontWeight: "400",
                 }}
               >
-                Create Account
+                {signupMutation.isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
+            {signupMutation.isError && (
+              <p
+                className="text-sm text-center mt-3"
+                style={{ color: '#b6403b', fontFamily: "'Jost', sans-serif" }}
+              >
+                {signupMutation.error?.response?.data?.message || signupMutation.error?.message}
+              </p>
+            )}
 
             {/* Login Link */}
             <div className="text-center anim-6">
@@ -201,7 +200,7 @@ export default function Signup() {
               </p>
             </div>
 
-          </div>
+          </form>
         </div>
       </div>
     </>

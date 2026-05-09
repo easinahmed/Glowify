@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { loginUser } from '../../api/api'
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -23,6 +25,21 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
+  const navigate = useNavigate();
+
+  const loginMutation = useMutation({
+    mutationFn: loginUser,
+    onSuccess: (data) => {
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('authUser', JSON.stringify(data.user));
+      navigate('/');
+    },
+  });
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    loginMutation.mutate({ email, password });
+  };
 
   return (
     <>
@@ -81,7 +98,7 @@ export default function Login() {
           </div>
 
           {/* Fields */}
-          <div className="flex flex-col gap-5 mb-4 anim-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 mb-4 anim-2">
             {/* Email */}
             <div className="relative">
               <span
@@ -146,44 +163,54 @@ export default function Login() {
                 {showPass ? "hide" : "show"}
               </button>
             </div>
-          </div>
 
-          {/* Forgot Password */}
-          <div className="flex justify-end mb-7 anim-3">
-            <a
-              href="#"
-              className="text-xs"
-              style={{
-                fontFamily: "'Jost', sans-serif",
-                color: "#8a6e68",
-                letterSpacing: "0.02em",
-              }}
-            >
-              Forgot Password?
-            </a>
-          </div>
+            {/* Forgot Password */}
+            <div className="flex justify-end mb-7 anim-3">
+              <a
+                href="#"
+                className="text-xs"
+                style={{
+                  fontFamily: "'Jost', sans-serif",
+                  color: "#8a6e68",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Forgot Password?
+              </a>
+            </div>
 
-          {/* Sign In Button */}
-          <div className="anim-4">
-            <button
-              className="w-full rounded-full py-4 text-xs tracking-[0.18em] uppercase text-white cursor-pointer transition-all duration-250 hover:-translate-y-px active:translate-y-0"
-              style={{
-                fontFamily: "'Jost', sans-serif",
-                background: "linear-gradient(135deg, #7a5c56 0%, #5e4540 100%)",
-                boxShadow: "0 4px 18px rgba(90,60,55,0.28)",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 6px 24px rgba(90,60,55,0.38)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.boxShadow =
-                  "0 4px 18px rgba(90,60,55,0.28)")
-              }
-            >
-              Sign In
-            </button>
-          </div>
+            {/* Sign In Button */}
+            <div className="anim-4">
+              <button
+                className="w-full rounded-full py-4 text-xs tracking-[0.18em] uppercase text-white cursor-pointer transition-all duration-250 hover:-translate-y-px active:translate-y-0"
+                style={{
+                  fontFamily: "'Jost', sans-serif",
+                  background: "linear-gradient(135deg, #7a5c56 0%, #5e4540 100%)",
+                  boxShadow: "0 4px 18px rgba(90,60,55,0.28)",
+                }}
+                type="submit"
+                disabled={loginMutation.isLoading}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 6px 24px rgba(90,60,55,0.38)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    "0 4px 18px rgba(90,60,55,0.28)")
+                }
+              >
+                {loginMutation.isLoading ? 'Signing In...' : 'Sign In'}
+              </button>
+            </div>
+            {loginMutation.isError && (
+              <p
+                className="text-sm text-center mt-3"
+                style={{ color: '#b6403b', fontFamily: "'Jost', sans-serif" }}
+              >
+                {loginMutation.error?.response?.data?.message || loginMutation.error?.message}
+              </p>
+            )}
+          </form>
 
           {/* Divider */}
           <div className="my-7 flex items-center gap-4 anim-5">

@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { fetchProducts } from '../api/api'
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -53,62 +56,32 @@ const styles = `
   .clear-btn:hover { background: #5e4540 !important; }
 `;
 
-const CATEGORIES = ["Cleansers", "Serums", "Moisturizers", "Oils"];
-const SKIN_TYPES = ["ALL", "OILY", "DRY", "COMBINATION", "SENSITIVE"];
-const SORT_OPTIONS = ["Newest Arrivals", "Price: Low to High", "Price: High to Low", "Best Sellers"];
-
-const PRODUCTS = [
-  {
-    id: 1,
-    name: "Midnight Renewal Oil",
-    category: "SERUM",
-    price: 68,
-    image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=600&q=80",
-  },
-  {
-    id: 2,
-    name: "Velvet Cloud Cream",
-    category: "MOISTURIZER",
-    price: 52,
-    image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&q=80",
-  },
-  {
-    id: 3,
-    name: "Gentle Botanicals Milk",
-    category: "CLEANSER",
-    price: 45,
-    image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&q=80",
-  },
-  {
-    id: 4,
-    name: "Aura Glow Elixir",
-    category: "SERUM",
-    price: 82,
-    image: "https://images.unsplash.com/photo-1617897903246-719242758050?w=600&q=80",
-  },
-  {
-    id: 5,
-    name: "Earthbound Clay Mask",
-    category: "RITUAL",
-    price: 58,
-    image: "https://images.unsplash.com/photo-1611080626919-7cf5a9dbab12?w=600&q=80",
-  },
-  {
-    id: 6,
-    name: "Rose Quartz Mist",
-    category: "TONER",
-    price: 38,
-    image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=80",
-  },
-];
+const CATEGORIES = ["CLEANSER", "SERUM", "MOISTURIZER", "TONER", "RITUAL"];
+const SKIN_TYPES = ["ALL"];
+const SORT_OPTIONS = ["Newest Arrivals", "Price: Low to High", "Price: High to Low"];
 
 export default function Shop() {
-  const [checkedCats, setCheckedCats] = useState(["Serums"]);
+  const [checkedCats, setCheckedCats] = useState([]);
   const [activeSkin, setActiveSkin] = useState("ALL");
   const [priceMax, setPriceMax] = useState(200);
   const [sort, setSort] = useState("Newest Arrivals");
   const [sortOpen, setSortOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const categoryParam = checkedCats.length ? checkedCats.join('|') : undefined;
+  const sortParam = sort === 'Price: Low to High'
+    ? 'priceAsc'
+    : sort === 'Price: High to Low'
+      ? 'priceDesc'
+      : sort === 'Newest Arrivals'
+        ? 'newest'
+        : undefined;
+
+  const { data: products = [], isLoading, isError } = useQuery({
+    queryKey: ['products', categoryParam, priceMax, sortParam],
+    queryFn: () => fetchProducts({ category: categoryParam, maxPrice: priceMax, sort: sortParam }),
+    keepPreviousData: true,
+  });
 
   const toggleCat = (cat) => {
     setCheckedCats((prev) =>
@@ -120,9 +93,28 @@ export default function Shop() {
     setCheckedCats([]);
     setActiveSkin("ALL");
     setPriceMax(200);
+    setSort("Newest Arrivals");
   };
 
-  const filtered = PRODUCTS.filter((p) => p.price <= priceMax);
+  // Since products don't have skinType, we'll just return all products
+  // The category filtering is handled by the API
+  const filtered = products;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
+        <p className="text-base text-[#7a5c56]">Loading products...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
+        <p className="text-base text-[#b6403b]">Unable to load products. Please try again.</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -350,13 +342,15 @@ export default function Shop() {
             <div className="flex-1">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                 {filtered.map((product, i) => (
-                  <div
-                    key={product.id}
+                  <Link
+                    key={product._id || product.id}
+                    to={`/shop/${product._id || product.id}`}
                     className={`product-card rounded-2xl overflow-hidden cursor-pointer anim-${Math.min(i + 1, 6)}`}
                     style={{
                       background: "#fff",
                       border: "1px solid #f0e4df",
                       boxShadow: "0 2px 12px rgba(100,60,50,0.05)",
+                      textDecoration: 'none',
                     }}
                   >
                     {/* Image */}
@@ -397,7 +391,7 @@ export default function Shop() {
                         ${product.price}.00
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 

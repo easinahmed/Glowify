@@ -15,54 +15,52 @@ import {
   X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchCustomers, fetchCustomerStats, createCustomer, updateCustomer, deleteCustomer } from '../../api/api';
 
 export default function Customers() {
-  const [customers, setCustomers] = useState([
-    {
-      id: 1,
-      name: "Elena Vance",
-      email: "elena.vance@email.com",
-      avatar: "https://i.pravatar.cc/40?u=elena",
-      joinDate: "Mar 12, 2024",
-      totalSpent: 1284,
-      orders: 14,
-      status: "Active"
-    },
-    {
-      id: 2,
-      name: "Marcus Chen",
-      email: "marcus.chen@email.com",
-      avatar: "https://i.pravatar.cc/40?u=marcus",
-      joinDate: "Apr 05, 2024",
-      totalSpent: 892,
-      orders: 9,
-      status: "Active"
-    },
-    {
-      id: 3,
-      name: "Isabella Ross",
-      email: "isabella.ross@email.com",
-      avatar: "https://i.pravatar.cc/40?u=isabella",
-      joinDate: "Feb 18, 2024",
-      totalSpent: 2340,
-      orders: 22,
-      status: "Active"
-    },
-    {
-      id: 4,
-      name: "David Miller",
-      email: "david.m@email.com",
-      avatar: "https://i.pravatar.cc/40?u=david",
-      joinDate: "May 01, 2024",
-      totalSpent: 445,
-      orders: 5,
-      status: "Inactive"
-    },
-  ]);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const queryClient = useQueryClient();
+
+  const { data: customersData, isLoading: customersLoading } = useQuery({
+    queryKey: ['customers'],
+    queryFn: fetchCustomers
+  });
+
+  const { data: customerStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['customerStats'],
+    queryFn: fetchCustomerStats
+  });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: createCustomer,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customers']);
+      queryClient.invalidateQueries(['customerStats']);
+      setIsModalOpen(false);
+    }
+  });
+
+  const updateCustomerMutation = useMutation({
+    mutationFn: ({ id, data }) => updateCustomer(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customers']);
+      queryClient.invalidateQueries(['customerStats']);
+      setIsModalOpen(false);
+    }
+  });
+
+  const deleteCustomerMutation = useMutation({
+    mutationFn: deleteCustomer,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customers']);
+      queryClient.invalidateQueries(['customerStats']);
+    }
+  });
+
+  const customers = customersData?.data || [];
 
   const [formData, setFormData] = useState({
     name: "",
@@ -110,25 +108,17 @@ export default function Customers() {
 
     if (editingCustomer) {
       // Update
-      setCustomers(customers.map(c => 
-        c.id === editingCustomer.id ? { ...formData, id: c.id } : c
-      ));
+      updateCustomerMutation.mutate({ id: editingCustomer._id, data: formData });
     } else {
       // Create
-      const newCustomer = {
-        ...formData,
-        id: Date.now()
-      };
-      setCustomers([...customers, newCustomer]);
+      createCustomerMutation.mutate(formData);
     }
-
-    setIsModalOpen(false);
   };
 
   // Delete Customer
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this customer?")) {
-      setCustomers(customers.filter(c => c.id !== id));
+      deleteCustomerMutation.mutate(id);
     }
   };
 
@@ -196,7 +186,7 @@ export default function Customers() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">TOTAL CUSTOMERS</p>
-              <p className="text-4xl font-semibold mt-3">{customers.length}</p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (customerStats?.data?.totalCustomers || 0)}</p>
               <p className="text-emerald-600 text-sm mt-1 flex items-center gap-1">
                 <TrendingUp className="w-4 h-4" /> +18% this month
               </p>
@@ -204,19 +194,17 @@ export default function Customers() {
             {/* Other KPI cards remain the same */}
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">NEW THIS MONTH</p>
-              <p className="text-4xl font-semibold mt-3">184</p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (customerStats?.data?.newThisMonth || 0)}</p>
               <p className="text-gray-500 text-sm mt-1">+42 since last week</p>
             </div>
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">ACTIVE CUSTOMERS</p>
-              <p className="text-4xl font-semibold mt-3">
-                {customers.filter(c => c.status === "Active").length}
-              </p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (customerStats?.data?.activeCustomers || 0)}</p>
               <p className="text-emerald-600 text-sm mt-1">84% retention rate</p>
             </div>
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">AVG. LIFETIME VALUE</p>
-              <p className="text-4xl font-semibold mt-3">$428</p>
+              <p className="text-4xl font-semibold mt-3">${statsLoading ? '...' : ((customerStats?.data?.avgLifetimeValue || 0).toFixed(0))}</p>
               <p className="text-gray-500 text-sm mt-1">+12% from last quarter</p>
             </div>
           </div>
@@ -251,49 +239,65 @@ export default function Customers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer) => (
-                    <tr key={customer.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={customer.avatar} 
-                            alt={customer.name}
-                            className="w-9 h-9 rounded-full" 
-                          />
-                          <span className="font-medium">{customer.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-gray-600">{customer.email}</td>
-                      <td className="px-6 py-5 text-gray-600">{customer.joinDate}</td>
-                      <td className="px-6 py-5 font-semibold">${customer.totalSpent}</td>
-                      <td className="px-6 py-5 font-medium">{customer.orders}</td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-block px-4 py-1 text-xs font-medium rounded-full ${
-                          customer.status === 'Active' 
-                            ? 'bg-emerald-100 text-emerald-700' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {customer.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="flex items-center justify-center gap-4">
-                          <button 
-                            onClick={() => openEditModal(customer)}
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(customer.id)}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
+                  {customersLoading ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                        Loading customers...
                       </td>
                     </tr>
-                  ))}
+                  ) : filteredCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                        No customers found
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCustomers.map((customer) => (
+                      <tr key={customer._id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={customer.avatar || `https://i.pravatar.cc/40?u=${customer.name.toLowerCase().replace(/\s+/g, '')}`}
+                              alt={customer.name}
+                              className="w-9 h-9 rounded-full" 
+                            />
+                            <span className="font-medium">{customer.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-gray-600">{customer.email}</td>
+                        <td className="px-6 py-5 text-gray-600">
+                          {new Date(customer.joinDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-5 font-semibold">${customer.totalSpent}</td>
+                        <td className="px-6 py-5 font-medium">{customer.orders}</td>
+                        <td className="px-6 py-5">
+                          <span className={`inline-block px-4 py-1 text-xs font-medium rounded-full ${
+                            customer.status === 'Active' 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {customer.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 text-center">
+                          <div className="flex items-center justify-center gap-4">
+                            <button 
+                              onClick={() => openEditModal(customer)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(customer._id)}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

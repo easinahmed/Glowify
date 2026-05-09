@@ -1,6 +1,4 @@
-
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Package, 
   Bell, 
@@ -12,9 +10,32 @@ import {
   ArrowUp,
   LogOut
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { fetchProducts, fetchOrderStats, fetchCustomerStats } from '../../api/api';
 
 export default function AdminDashboard() {
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProducts
+  });
+
+  const { data: orderStats, isLoading: orderStatsLoading } = useQuery({
+    queryKey: ['orderStats'],
+    queryFn: fetchOrderStats
+  });
+
+  const { data: customerStats, isLoading: customerStatsLoading } = useQuery({
+    queryKey: ['customerStats'],
+    queryFn: fetchCustomerStats
+  });
+
+  const totalProducts = Array.isArray(productsData) ? productsData.length : productsData?.data?.length || 0;
+  const totalOrders = orderStats?.data?.totalOrders || 0;
+  const pendingOrders = orderStats?.data?.pendingOrders || 0;
+  const totalRevenue = orderStats?.data?.totalRevenue || 0;
+  const totalCustomers = customerStats?.data?.totalCustomers || 0;
+  const activeCustomers = customerStats?.data?.activeCustomers || 0;
   return (
     <div className="min-h-screen bg-[#fdfaf7] flex font-sans">
       {/* Sidebar */}
@@ -85,7 +106,7 @@ export default function AdminDashboard() {
                   +2% <TrendingUp className="w-4 h-4" />
                 </span>
               </div>
-              <p className="text-4xl font-semibold mt-6">124</p>
+              <p className="text-4xl font-semibold mt-6">{productsLoading ? '...' : totalProducts}</p>
               <p className="text-gray-600">Total Products</p>
             </div>
 
@@ -96,7 +117,7 @@ export default function AdminDashboard() {
                 </div>
                 <span className="text-red-600 text-sm font-medium">Action Needed</span>
               </div>
-              <p className="text-4xl font-semibold mt-6">8</p>
+              <p className="text-4xl font-semibold mt-6">{orderStatsLoading ? '...' : pendingOrders}</p>
               <p className="text-gray-600">Low Stock Alerts</p>
             </div>
 
@@ -107,8 +128,8 @@ export default function AdminDashboard() {
                 </div>
                 <span className="text-gray-500 text-sm font-medium">Today</span>
               </div>
-              <p className="text-4xl font-semibold mt-6">42</p>
-              <p className="text-gray-600">New Orders</p>
+              <p className="text-4xl font-semibold mt-6">{orderStatsLoading ? '...' : totalOrders}</p>
+              <p className="text-gray-600">Total Orders</p>
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
@@ -120,7 +141,7 @@ export default function AdminDashboard() {
                   +18% <TrendingUp className="w-4 h-4" />
                 </span>
               </div>
-              <p className="text-4xl font-semibold mt-6">$14,892</p>
+              <p className="text-4xl font-semibold mt-6">${totalRevenue.toLocaleString()}</p>
               <p className="text-gray-600">Total Revenue</p>
             </div>
           </div>

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { fetchProductById } from "../api/api";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -41,62 +44,84 @@ const styles = `
   input::placeholder { color: #c4ada7; }
 `;
 
-const THUMBNAILS = [
-  "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=200&q=80",
-  "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80",
-  "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&q=80",
-];
-
-const MAIN_IMAGE = "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=900&q=85";
-
-const SKIN_TAGS = ["ALL SKIN TYPES", "SENSITIVE SAFE", "DERMATOLOGIST TESTED"];
-
-const ACTIVES = [
-  {
-    icon: "💧",
-    name: "Hyaluronic Acid (2%)",
-    desc: "Multi-molecular weights to hydrate both the surface and deep layers of the epidermis.",
-  },
-  {
-    icon: "🌿",
-    name: "Niacinamide (5%)",
-    desc: "Refines skin texture, balances oil production, and visibly reduces the appearance of pores.",
-  },
-  {
-    icon: "🌹",
-    name: "Rosehip Seed Extract",
-    desc: "Naturally rich in Vitamin A and C to promote cell turnover and brighten the complexion.",
-  },
-];
-
-const RITUAL_STEPS = [
-  {
-    num: "01",
-    title: "Cleanse & Prep",
-    desc: "Start with a fresh canvas. Use our Purifying Cleanser to remove impurities and pat dry gently.",
-  },
-  {
-    num: "02",
-    title: "Apply Serum",
-    desc: "Dispense 2–3 drops onto your fingertips. Gently press and massage into your face, neck, and décolletage.",
-  },
-  {
-    num: "03",
-    title: "Seal with Care",
-    desc: "Wait 30 seconds for full absorption, then follow with your preferred moisturizer to lock in the actives.",
-  },
-];
-
 export default function ProductDetails() {
+  const { id } = useParams();
   const [activeThumb, setActiveThumb] = useState(0);
   const [qty, setQty] = useState(1);
   const [accordionOpen, setAccordionOpen] = useState(true);
   const [added, setAdded] = useState(false);
 
+  const { data: product, isLoading, isError } = useQuery({
+    queryKey: ['product', id],
+    queryFn: () => fetchProductById(id),
+    enabled: !!id,
+  });
+
   const handleAdd = () => {
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
+        <p className="text-base text-[#7a5c56]">Loading product...</p>
+      </div>
+    );
+  }
+
+  if (isError || !product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
+        <p className="text-base text-[#b6403b]">Product not found.</p>
+      </div>
+    );
+  }
+
+  const THUMBNAILS = [
+    product.image,
+    "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80",
+    "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&q=80",
+  ];
+
+  const MAIN_IMAGE = product.image;
+  const SKIN_TAGS = ["ALL SKIN TYPES", "SENSITIVE SAFE", "DERMATOLOGIST TESTED"];
+
+  const ACTIVES = [
+    {
+      icon: "💧",
+      name: "Hyaluronic Acid (2%)",
+      desc: "Multi-molecular weights to hydrate both the surface and deep layers of the epidermis.",
+    },
+    {
+      icon: "🌿",
+      name: "Niacinamide (5%)",
+      desc: "Refines skin texture, balances oil production, and visibly reduces the appearance of pores.",
+    },
+    {
+      icon: "🌹",
+      name: "Rosehip Seed Extract",
+      desc: "Naturally rich in Vitamin A and C to promote cell turnover and brighten the complexion.",
+    },
+  ];
+
+  const RITUAL_STEPS = [
+    {
+      num: "01",
+      title: "Cleanse & Prep",
+      desc: "Start with a fresh canvas. Use our Purifying Cleanser to remove impurities and pat dry gently.",
+    },
+    {
+      num: "02",
+      title: "Apply Serum",
+      desc: "Dispense 2–3 drops onto your fingertips. Gently press and massage into your face, neck, and décolletage.",
+    },
+    {
+      num: "03",
+      title: "Seal with Care",
+      desc: "Wait 30 seconds for full absorption, then follow with your preferred moisturizer to lock in the actives.",
+    },
+  ];
 
   return (
     <>
@@ -162,7 +187,7 @@ export default function ProductDetails() {
                 className="anim-1 text-[10px] tracking-[0.22em] uppercase mb-3"
                 style={{ color: "#9e8a85", fontWeight: "400" }}
               >
-                Advanced Hydration
+                {product.category}
               </p>
 
               {/* Name */}
@@ -176,7 +201,7 @@ export default function ProductDetails() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Dewy Radiance Serum
+                {product.name}
               </h1>
 
               {/* Price */}
@@ -184,7 +209,7 @@ export default function ProductDetails() {
                 className="anim-2 text-xl mb-5"
                 style={{ fontWeight: "400", color: "#2e2420", letterSpacing: "0.02em" }}
               >
-                $64.00
+                ${product.price}.00
               </p>
 
               {/* Description */}
@@ -197,10 +222,7 @@ export default function ProductDetails() {
                   maxWidth: "480px",
                 }}
               >
-                A transformative ritual in a bottle. This lightweight, silky serum
-                penetrates deep into the dermal layers to deliver intense hydration
-                and a lit-from-within glow. Crafted with expert-grade botanicals to
-                restore your skin's natural vitality.
+                {product.description || "A transformative ritual in a bottle. This lightweight, silky serum penetrates deep into the dermal layers to deliver intense hydration and a lit-from-within glow. Crafted with expert-grade botanicals to restore your skin's natural vitality."}
               </p>
 
               {/* Qty + Add to Cart */}

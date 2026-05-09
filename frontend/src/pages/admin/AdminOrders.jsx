@@ -11,45 +11,47 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchOrders, fetchOrderStats, updateOrderStatus } from '../../api/api';
 
 export default function AdminOrders() {
   const [activeTab, setActiveTab] = useState('All Orders');
+  const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
 
-  const orders = [
-    {
-      id: "#GL-9021",
-      customer: "Julianne Moore",
-      avatar: "https://i.pravatar.cc/40?u=julianne",
-      date: "Oct 24, 2024",
-      total: "$184.00",
-      status: "PENDING"
-    },
-    {
-      id: "#GL-8994",
-      customer: "Soren Kierkegaard",
-      avatar: "https://i.pravatar.cc/40?u=soren",
-      date: "Oct 23, 2024",
-      total: "$52.00",
-      status: "SHIPPED"
-    },
-    {
-      id: "#GL-8972",
-      customer: "Amira Kassis",
-      avatar: "https://i.pravatar.cc/40?u=amira",
-      date: "Oct 21, 2024",
-      total: "$240.50",
-      status: "DELIVERED"
-    },
-    {
-      id: "#GL-8951",
-      customer: "Odin Thorne",
-      avatar: "https://i.pravatar.cc/40?u=odin",
-      date: "Oct 20, 2024",
-      total: "$115.00",
-      status: "DELIVERED"
-    },
-  ];
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['orders'],
+    queryFn: fetchOrders
+  });
+
+  const { data: orderStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['orderStats'],
+    queryFn: fetchOrderStats
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ orderId, status }) => updateOrderStatus(orderId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['orders']);
+      queryClient.invalidateQueries(['orderStats']);
+    }
+  });
+
+  const orders = ordersData?.data || [];
+
+  // Filter orders based on active tab and search
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (activeTab === 'All Orders') return matchesSearch;
+    if (activeTab === 'Pending') return matchesSearch && order.status === 'PENDING';
+    if (activeTab === 'Shipped') return matchesSearch && order.status === 'SHIPPED';
+    if (activeTab === 'Delivered') return matchesSearch && order.status === 'DELIVERED';
+    
+    return matchesSearch;
+  });
 
   const getStatusStyle = (status) => {
     switch(status) {
@@ -123,25 +125,25 @@ export default function AdminOrders() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">TOTAL ORDERS</p>
-              <p className="text-4xl font-semibold mt-3">1,284</p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (orderStats?.data?.totalOrders || 0)}</p>
               <p className="text-emerald-600 text-sm mt-1">+12% vs last month</p>
             </div>
 
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">PENDING SHIPMENT</p>
-              <p className="text-4xl font-semibold mt-3">42</p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (orderStats?.data?.pendingOrders || 0)}</p>
               <p className="text-orange-600 text-sm mt-1">Requires attention</p>
             </div>
 
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">COMPLETED RITUALS</p>
-              <p className="text-4xl font-semibold mt-3">1,190</p>
+              <p className="text-4xl font-semibold mt-3">{statsLoading ? '...' : (orderStats?.data?.deliveredOrders || 0)}</p>
               <p className="text-gray-500 text-sm mt-1">92.6% fulfillment rate</p>
             </div>
 
             <div className="bg-white rounded-3xl p-6">
               <p className="text-sm text-gray-500">TOTAL REVENUE</p>
-              <p className="text-4xl font-semibold mt-3">$84.2k</p>
+              <p className="text-4xl font-semibold mt-3">${statsLoading ? '...' : ((orderStats?.data?.totalRevenue || 0).toLocaleString())}</p>
               <p className="text-gray-500 text-sm mt-1">Gross curated sales</p>
             </div>
           </div>
@@ -171,6 +173,8 @@ export default function AdminOrders() {
                 <input
                   type="text"
                   placeholder="Search customer or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-rose-300"
                 />
               </div>
@@ -190,36 +194,73 @@ export default function AdminOrders() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
-                    <tr key={order.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-5 font-medium">{order.id}</td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <img src={order.avatar} alt="" className="w-8 h-8 rounded-full" />
-                          <span>{order.customer}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-gray-600">{order.date}</td>
-                      <td className="px-6 py-5 font-semibold">{order.total}</td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-block px-4 py-1 text-xs font-medium rounded-full ${getStatusStyle(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <button className="text-gray-400 hover:text-gray-700 transition-colors">
-                          <Eye className="w-5 h-5 mx-auto" />
-                        </button>
+                  {ordersLoading ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        Loading orders...
                       </td>
                     </tr>
-                  ))}
+                  ) : filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        No orders found
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <tr key={order._id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-5 font-medium">{order.orderNumber}</td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={`https://i.pravatar.cc/40?u=${order.customerName.toLowerCase().replace(/\s+/g, '')}`} 
+                              alt=""
+                              className="w-8 h-8 rounded-full" 
+                            />
+                            <span>{order.customerName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-gray-600">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-5 font-semibold">${order.totalAmount.toFixed(2)}</td>
+                        <td className="px-6 py-5">
+                          <select
+                            value={order.status}
+                            onChange={(e) => updateStatusMutation.mutate({ 
+                              orderId: order._id, 
+                              status: e.target.value 
+                            })}
+                            className={`inline-block px-4 py-1 text-xs font-medium rounded-full border-0 ${
+                              order.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+                              order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-700' :
+                              order.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            <option value="PENDING">PENDING</option>
+                            <option value="SHIPPED">SHIPPED</option>
+                            <option value="DELIVERED">DELIVERED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-5 text-center">
+                          <button className="text-gray-400 hover:text-gray-700 transition-colors">
+                            <Eye className="w-5 h-5 mx-auto" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
             <div className="px-6 py-5 flex items-center justify-between border-t">
-              <p className="text-sm text-gray-500">Showing 1-4 of 1,284 results</p>
+              <p className="text-sm text-gray-500">
+                Showing 1-{Math.min(filteredOrders.length, 10)} of {filteredOrders.length} results
+              </p>
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-xl">
                   <ChevronLeft className="w-5 h-5" />
