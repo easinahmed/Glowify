@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 require('dotenv').config();
+const { encryptToken } = require('../utils/encryption');
+
 
 const signToken = (user) => {
   return jwt.sign(
@@ -36,14 +38,16 @@ exports.signup = async (req, res) => {
     const user = await User.create({ username, email, password });
     const token = signToken(user);
 
-    res.cookie('token', token, {
+    const encryptedToken = encryptToken(token);
+
+    res.cookie('token', encryptedToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.status(201).json({ user: sanitizeUser(user), token });
+    res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Signup failed', error: error.message });
@@ -69,7 +73,8 @@ exports.login = async (req, res) => {
     }
 
     const token = signToken(user);
-    res.cookie('token', token, {
+    const encryptedToken = encryptToken(token);
+    res.cookie('token', encryptedToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -82,7 +87,7 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     console.log('NODE_ENV:', process.env.NODE_ENV);
-    res.json({ user: sanitizeUser(user), token });
+    res.json({ user: sanitizeUser(user) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Login failed', error: error.message });

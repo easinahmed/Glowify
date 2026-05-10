@@ -92,17 +92,7 @@ export default function AdminOrders() {
           </div>
         </nav>
 
-        <div className="p-6 border-t mt-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-rose-100 rounded-full flex items-center justify-center text-lg">
-              👩
-            </div>
-            <div>
-              <p className="font-medium text-sm">Elena Rossi</p>
-              <p className="text-xs text-gray-500">Senior Curator</p>
-            </div>
-          </div>
-        </div>
+        
       </div>
 
       {/* Main Content */}

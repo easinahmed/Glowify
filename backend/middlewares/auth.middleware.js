@@ -1,13 +1,25 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 require('dotenv').config();
+const { decryptToken } = require('../utils/encryption');
+
 
 exports.protect = async (req, res, next) => {
   const authHeader = req.headers.authorization || '';
-  const token = req.cookies.token || (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
+  const encryptedCookieToken = req.cookies.token;
+  let token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (!token && encryptedCookieToken) {
+    try {
+      token = decryptToken(encryptedCookieToken);
+    } catch (e) {
+      console.error('Failed to decrypt token:', e);
+      return res.status(401).json({ message: 'Invalid or tampered token' });
+    }
+  }
 
   console.log('Cookies received:', req.cookies);
-  console.log('Token from cookie:', !!req.cookies.token);
+  console.log('Token from cookie:', !!encryptedCookieToken);
   console.log('Token from header:', !!authHeader);
 
   if (!token) {
