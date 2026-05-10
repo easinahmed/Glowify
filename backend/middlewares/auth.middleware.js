@@ -4,7 +4,11 @@ require('dotenv').config();
 
 exports.protect = async (req, res, next) => {
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const token = req.cookies.token || (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
+
+  console.log('Cookies received:', req.cookies);
+  console.log('Token from cookie:', !!req.cookies.token);
+  console.log('Token from header:', !!authHeader);
 
   if (!token) {
     return res.status(401).json({ message: 'Authorization token required' });

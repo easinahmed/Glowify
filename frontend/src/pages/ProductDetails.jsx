@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { fetchProductById } from "../api/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { fetchProductById, addToCart } from "../api/api";
+import { useAuth } from "../context/AuthContext";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -23,6 +24,8 @@ const styles = `
 `;
 
 export default function ProductDetails() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { id } = useParams();
   const [activeThumb, setActiveThumb] = useState(0);
   const [qty, setQty] = useState(1);
@@ -35,29 +38,26 @@ export default function ProductDetails() {
     enabled: !!id,
   });
 
+  const addToCartMutation = useMutation({
+    mutationFn: () => addToCart(product._id, qty),
+    onSuccess: () => {
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    },
+    onError: (error) => {
+      if (error?.response?.status === 401) {
+        navigate('/auth/login');
+      }
+    }
+  });
+
   const handleAddToCart = () => {
-    const cartKey = 'glowifyCart';
-    const storedCart = localStorage.getItem(cartKey);
-    const currentCart = storedCart ? JSON.parse(storedCart) : [];
-
-    const existing = currentCart.find(item => item.productId === product._id);
-
-    if (existing) {
-      existing.quantity += qty;
-    } else {
-      currentCart.push({
-        productId: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: qty,
-        image: product.image,
-        variant: "Standard"
-      });
+    if (!user) {
+      navigate('/auth/login');
+      return;
     }
 
-    localStorage.setItem(cartKey, JSON.stringify(currentCart));
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    addToCartMutation.mutate();
   };
 
   if (isLoading) {

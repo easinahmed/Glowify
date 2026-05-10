@@ -7,16 +7,17 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 })
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-}, (error) => Promise.reject(error))
+// Add token to requests - removed localStorage usage
+// api.interceptors.request.use((config) => {
+//   const token = localStorage.getItem('authToken')
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`
+//   }
+//   return config
+// }, (error) => Promise.reject(error))
 
 // Auth API
 export const loginUser = async (credentials) => {
@@ -39,17 +40,38 @@ export const getCurrentUser = async () => {
   return response.data
 }
 
-// Product API
-export const fetchProducts = async ({ category, maxPrice, search, sort } = {}) => {
-  const params = {}
-  if (category) params.category = category
-  if (maxPrice) params.maxPrice = maxPrice
-  if (search) params.search = search
-  if (sort) params.sort = sort
-
-  const response = await api.get('/products', { params })
+// Cart API
+export const getCart = async () => {
+  const response = await api.get('/cart')
   return response.data
 }
+
+export const addToCart = async (productId, quantity = 1) => {
+  const response = await api.post('/cart/add', { productId, quantity })
+  return response.data
+}
+
+export const updateCartItem = async (productId, quantity) => {
+  const response = await api.put('/cart/update', { productId, quantity })
+  return response.data
+}
+
+export const removeFromCart = async (productId) => {
+  const response = await api.delete(`/cart/remove/${productId}`)
+  return response.data
+}
+
+export const clearCart = async () => {
+  const response = await api.delete('/cart/clear')
+  return response.data
+}
+  
+// Product API
+export const fetchProducts = async () => {
+  const response = await api.get('/products')
+  return response.data
+}
+
 
 export const fetchProductById = async (productId) => {
   const response = await api.get(`/products/${productId}`)

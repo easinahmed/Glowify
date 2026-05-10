@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from '@tanstack/react-query';
+import { getCart } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap');
@@ -52,26 +55,17 @@ export default function Navbar() {
   const [active, setActive] = useState("Shop All");
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Check authentication status
-  const isAuthenticated = !!localStorage.getItem('authToken');
-  const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('authUser') || 'null');
-    } catch {
-      return null;
-    }
-  })();
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  });
 
-  // Get cart count
-  const cartCount = (() => {
-    try {
-      const cart = JSON.parse(localStorage.getItem('glowifyCart') || '[]');
-      return cart.reduce((total, item) => total + item.quantity, 0);
-    } catch {
-      return 0;
-    }
-  })();
+  const isAuthenticated = Boolean(user);
+  const cartCount = cartData?.data?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
 
   const handleCategoryClick = (label, category) => {
     setActive(label);
@@ -79,7 +73,8 @@ export default function Navbar() {
 
     if (category) {
       // Go to shop with category filter
-      navigate(`/shop?category=${category}`);
+      const dashboardPath = user?.role === 'admin' ? '/admin/dashboard' : `/shop?category=${category}`;
+      navigate(dashboardPath, { replace: true });
     } else {
       // "Shop All" - clear all filters
       navigate('/shop', { replace: true });
@@ -88,7 +83,11 @@ export default function Navbar() {
 
   const handleCartClick = () => {
     if (isAuthenticated) {
-      navigate('/user/cart');
+      if (user?.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/user/cart');
+      }
     } else {
       navigate('/auth/login');
     }

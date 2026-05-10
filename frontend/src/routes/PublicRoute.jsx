@@ -1,10 +1,16 @@
 import { Navigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const PublicRoute = ({ children }) => {
-  const token = localStorage.getItem('authToken')
+  const { user, loading } = useAuth()
 
-  if (token) {
-    return <Navigate to="/" replace />
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (user) {
+    const redirectPath = user.role === 'admin' ? '/admin/dashboard' : '/'
+    return <Navigate to={redirectPath} replace />
   }
 
   return children

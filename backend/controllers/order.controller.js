@@ -1,6 +1,7 @@
 const Order = require('../models/order.model');
 const Customer = require('../models/customer.model');
 const Product = require('../models/product.model');
+const Cart = require('../models/cart.model');
 
 // Get all orders
 const getAllOrders = async (req, res) => {
@@ -152,6 +153,13 @@ const createOrder = async (req, res) => {
     customerExists.orders += 1;
     customerExists.totalSpent += calculatedTotal;
     await customerExists.save();
+
+    // Clear the user's cart after creating an order
+    await Cart.findOneAndUpdate(
+      { user: req.user._id },
+      { items: [], totalItems: 0, totalPrice: 0 },
+      { new: true }
+    );
 
     const populatedOrder = await Order.findById(order._id)
       .populate('customer', 'name email totalSpent orders status')

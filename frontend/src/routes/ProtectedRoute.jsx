@@ -1,45 +1,21 @@
 import { Navigate } from 'react-router-dom'
-
-const parseJwt = (token) => {
-  if (!token) return null
-  try {
-    const payload = token.split('.')[1]
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const json = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    return JSON.parse(json)
-  } catch (error) {
-    return null
-  }
-}
+import { useAuth } from '../context/AuthContext'
 
 const ProtectedRoute = ({ children, roles = [] }) => {
-  const token = localStorage.getItem('authToken')
+  const { user, loading } = useAuth()
 
-  if (!token) {
-    return <Navigate to="/auth/login" replace />
-  }
-
-  let user = null
-  const storedUser = localStorage.getItem('authUser')
-  if (storedUser) {
-    try {
-      user = JSON.parse(storedUser)
-    } catch (error) {
-      user = null
-    }
+  if (loading) {
+    return <div>Loading...</div> // Or a proper loading component
   }
 
   if (!user) {
-    const payload = parseJwt(token)
-    user = payload ? { role: payload.role } : null
+    return <Navigate to="/auth/login" replace />
   }
 
-  if (roles.length > 0 && (!user || !roles.includes(user.role))) {
+  if (roles.length > 0 && !roles.includes(user.role)) {
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />
+    }
     return <Navigate to="/" replace />
   }
 

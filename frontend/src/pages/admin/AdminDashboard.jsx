@@ -13,9 +13,11 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchProducts, fetchOrderStats, fetchCustomerStats, logoutUser } from '../../api/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -35,8 +37,7 @@ export default function AdminDashboard() {
   const logoutMutation = useMutation({
     mutationFn: logoutUser,
     onSuccess: () => {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
+      logout();
       navigate('/auth/login');
     },
   });

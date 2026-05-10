@@ -1,7 +1,7 @@
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Trash2,
   Plus,
@@ -12,25 +12,10 @@ import {
   Wallet,
   Gift
 } from 'lucide-react';
-import { createOrder } from '../api/api';
-
-const CART_KEY = 'glowifyCart';
-
-const loadCart = () => {
-  try {
-    const stored = localStorage.getItem(CART_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveCart = (items) => {
-  localStorage.setItem(CART_KEY, JSON.stringify(items));
-};
+import { createOrder, getCart, updateCartItem, removeFromCart, clearCart } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Cart() {
-  const [cartItems, setCartItems] = useState([]);
   const [promoCode, setPromoCode] = useState('');
   const [isPromoApplied, setIsPromoApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -47,13 +32,53 @@ export default function Cart() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: cartData, isLoading: cartLoading } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+    enabled: !!user
+  });
+
+  const cartItems = cartData?.data?.items?.map((item) => {
+    const productId = item.product?._id || item.product
+    return {
+      ...item,
+      productId,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      quantity: item.quantity,
+    }
+  }) || [];
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ productId, quantity }) => updateCartItem(productId, quantity),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['cart']);
+    }
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: (productId) => removeFromCart(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['cart']);
+    }
+  });
+
+  const clearCartMutation = useMutation({
+    mutationFn: clearCart,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['cart']);
+    }
+  });
 
   // Order mutation
   const orderMutation = useMutation({
     mutationFn: (orderData) => createOrder(orderData),
     onSuccess: (response) => {
-      saveCart([]);
-      setCartItems([]);
+      clearCartMutation.mutate();
       setOrderMessage('✓ Order placed successfully!');
       setShippingAddress({ address: '', city: '', postalCode: '', country: '' });
       setPromoCode('');
@@ -80,24 +105,13 @@ export default function Cart() {
     }
   });
 
-  useEffect(() => {
-    const items = loadCart();
-    setCartItems(items);
-  }, []);
-
   const updateQuantity = (productId, newQuantity) => {
     if (newQuantity < 1) return;
-    const updated = cartItems.map((item) =>
-      item.productId === productId ? { ...item, quantity: newQuantity } : item
-    );
-    setCartItems(updated);
-    saveCart(updated);
+    updateItemMutation.mutate({ productId, quantity: newQuantity });
   };
 
   const removeItem = (productId) => {
-    const updated = cartItems.filter((item) => item.productId !== productId);
-    setCartItems(updated);
-    saveCart(updated);
+    removeItemMutation.mutate(productId);
   };
 
   const subtotal = useMemo(
@@ -144,8 +158,7 @@ export default function Cart() {
       return;
     }
 
-    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-    if (!authUser?.email) {
+    if (!user?.email) {
       setOrderMessage('Please log in to complete checkout.');
       return;
     }
@@ -161,8 +174,8 @@ export default function Cart() {
 
     // Format the order data for the backend
     const orderData = {
-      customerName: authUser.username || authUser.name || 'Customer',
-      customerEmail: authUser.email,
+      customerName: user.username || user.name || 'Customer',
+      customerEmail: user.email,
       items: cartItems.map((item) => ({ 
         product: item.productId, 
         quantity: item.quantity 
@@ -390,10 +403,10 @@ export default function Cart() {
 
               <button
                 onClick={handleCheckout}
-                disabled={isEmpty || orderMutation.isPending}
+                disabled={isEmpty || orderMutation.isLoading}
                 className="w-full mt-10 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white py-4 rounded-3xl text-lg font-medium disabled:opacity-50 transition-all"
               >
-                {orderMutation.isPending ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+                {orderMutation.isLoading ? 'Processing...' : `Pay $${total.toFixed(2)}`}
               </button>
 
               {orderMessage && (

@@ -13,39 +13,25 @@ import {
   Droplet
 } from 'lucide-react';
 import { getCurrentUser, logoutUser } from '../../api/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const { data, isLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser,
-    onSuccess: (response) => {
-      if (response?.user) {
-        localStorage.setItem('authUser', JSON.stringify(response.user));
-      }
-    },
     retry: false,
   });
 
   const logoutMutation = useMutation({
     mutationFn: logoutUser,
     onSuccess: () => {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
+      logout();
       navigate('/auth/login');
     },
   });
-
-  const storedUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('authUser') || 'null');
-    } catch {
-      return null;
-    }
-  })();
-
-  const user = data?.user || storedUser || { username: 'Guest', role: 'user' };
 
   const handleLogout = () => {
     logoutMutation.mutate();
