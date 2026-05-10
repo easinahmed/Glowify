@@ -13,6 +13,8 @@ app.use(
   cors({
     origin: "https://glowify-omega.vercel.app",
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   })
 );
 
