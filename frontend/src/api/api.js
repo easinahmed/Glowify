@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.PROD || process.env.NODE_ENV === 'production' ? 'http://localhost:8080/api' : '/api'
+const API_BASE_URL ='https://glowify-9ohb.onrender.com/api'
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -9,14 +9,6 @@ const api = axios.create({
   withCredentials: true,
 })
 
-// Add token to requests - removed localStorage usage
-// api.interceptors.request.use((config) => {
-//   const token = localStorage.getItem('authToken')
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`
-//   }
-//   return config
-// }, (error) => Promise.reject(error))
 
 // Auth API
 export const loginUser = async (credentials) => {

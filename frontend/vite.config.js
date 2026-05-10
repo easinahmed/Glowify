@@ -7,7 +7,11 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': {
+        target: 'https://glowify-9ohb.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
