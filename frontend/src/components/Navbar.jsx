@@ -1,5 +1,7 @@
+'use client';
+
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap');
@@ -36,129 +38,137 @@ const styles = `
   .ham-open .hamburger-line:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
   .ham-open .hamburger-line:nth-child(2) { opacity: 0; transform: scaleX(0); }
   .ham-open .hamburger-line:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-
-  input::placeholder { color: #cbbdb8; }
 `;
 
-const NAV_LINKS = ["Shop All", "Cleansers", "Serums", "Moisturizers", "Rituals"];
+const NAV_LINKS = [
+  { label: "Shop All", category: null },
+  { label: "Cleansers", category: "CLEANSER" },
+  { label: "Serums", category: "SERUM" },
+  { label: "Moisturizers", category: "MOISTURIZER" },
+  { label: "Rituals", category: "RITUAL" }
+];
 
 export default function Navbar() {
   const [active, setActive] = useState("Shop All");
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Check authentication status
+  const isAuthenticated = !!localStorage.getItem('authToken');
+  const user = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('authUser') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+
+  // Get cart count
+  const cartCount = (() => {
+    try {
+      const cart = JSON.parse(localStorage.getItem('glowifyCart') || '[]');
+      return cart.reduce((total, item) => total + item.quantity, 0);
+    } catch {
+      return 0;
+    }
+  })();
+
+  const handleCategoryClick = (label, category) => {
+    setActive(label);
+    setMenuOpen(false);
+
+    if (category) {
+      // Go to shop with category filter
+      navigate(`/shop?category=${category}`);
+    } else {
+      // "Shop All" - clear all filters
+      navigate('/shop', { replace: true });
+    }
+  };
+
+  const handleCartClick = () => {
+    if (isAuthenticated) {
+      navigate('/user/cart');
+    } else {
+      navigate('/auth/login');
+    }
+  };
+
+  const handleAccountClick = () => {
+    if (isAuthenticated) {
+      const dashboardPath = user?.role === 'admin' ? '/admin/dashboard' : '/user/dashboard';
+      navigate(dashboardPath);
+    } else {
+      navigate('/auth/login');
+    }
+  };
 
   return (
     <>
       <style>{styles}</style>
 
-      {/* ── NAVBAR ── */}
-      <nav
-        className="sticky top-0 z-50 w-full border-b"
-        style={{
-          background: "#f9ece6",
-          borderColor: "#edddd7",
-          fontFamily: "'Jost', sans-serif",
-        }}
-      >
+      <nav className="sticky top-0 z-50 w-full border-b" style={{ background: "#f9ece6", borderColor: "#edddd7" }}>
         <div className="mx-auto max-w-7xl px-5 md:px-10 h-16 flex items-center justify-between">
 
           {/* Logo */}
-          <Link
-            to="/"
-            className="text-base tracking-[0.22em] uppercase cursor-pointer shrink-0"
-            style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontWeight: "500",
-              color: "#2e2420",
-            }}
-          >
+          <Link to="/" className="text-base tracking-[0.22em] uppercase font-medium" style={{ fontFamily: "'Cormorant Garamond', serif", color: "#2e2420" }}>
             Glowify
           </Link>
 
-          {/* Desktop Nav Links */}
-          <ul className="hidden md:flex items-center gap-1 list-none">
-            {NAV_LINKS.map((link) => {
-              const isActive = active === link;
-              return (
-                <li key={link}>
-                  <Link
-                    to="/shop"
-                    onClick={() => setActive(link)}
-                    className={`relative px-3.5 py-1.5 text-[13.5px] tracking-wide bg-transparent border-0 cursor-pointer transition-colors duration-200 ${isActive ? "nav-link-active" : ""}`}
-                    style={{
-                      fontFamily: "'Jost', sans-serif",
-                      fontWeight: isActive ? "400" : "300",
-                      color: isActive ? "#2e2420" : "#9e8a85",
-                      letterSpacing: "0.03em",
-                    }}
-                  >
-                    {link}
-                  </Link>
-                </li>
-              );
-            })}
+          {/* Desktop Navigation */}
+          <ul className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map(({ label, category }) => (
+              <li key={label}>
+                <button
+                  onClick={() => handleCategoryClick(label, category)}
+                  className={`relative px-4 py-2 text-[13.5px] tracking-wide transition-colors ${active === label ? "nav-link-active" : ""}`}
+                  style={{
+                    fontFamily: "'Jost', sans-serif",
+                    fontWeight: active === label ? "400" : "300",
+                    color: active === label ? "#2e2420" : "#9e8a85",
+                  }}
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
           </ul>
 
-          {/* Right: Icons + Hamburger */}
+          {/* Right Side */}
           <div className="flex items-center gap-1">
-
             {/* Search */}
-            <button
-              className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
-              style={{ color: "#2e2420" }}
-              aria-label="Search"
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <button className="w-9 h-9 flex items-center justify-center hover:bg-black/5 rounded-full" style={{ color: "#2e2420" }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </button>
 
             {/* Cart */}
-            <Link
-              to="/user/cart"
-              className="relative w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
-              style={{ color: "#2e2420" }}
-              aria-label="Cart"
-            >
-              <span
-                className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                style={{ background: "#a89088" }}
-              />
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <button onClick={handleCartClick} className="relative w-9 h-9 flex items-center justify-center hover:bg-black/5 rounded-full" style={{ color: "#2e2420" }}>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#a89088] text-white text-xs rounded-full flex items-center justify-center font-medium">
+                  {cartCount}
+                </span>
+              )}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                 <line x1="3" y1="6" x2="21" y2="6" />
-                <path d="M16 10a4 4 0 01-8 0" />
               </svg>
-            </Link>
+            </button>
 
             {/* Account */}
-            <Link
-              to={(() => {
-                try {
-                  const stored = JSON.parse(localStorage.getItem('authUser') || 'null');
-                  return stored?.role === 'admin' ? '/admin/dashboard' : '/user/dashboard';
-                } catch {
-                  return '/user/dashboard';
-                }
-              })()}
-              className="w-9 h-9 rounded-full flex items-center justify-center border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:bg-black/5"
-              style={{ color: "#2e2420" }}
-              aria-label="Account"
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <button onClick={handleAccountClick} className="w-9 h-9 flex items-center justify-center hover:bg-black/5 rounded-full" style={{ color: "#2e2420" }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-            </Link>
+            </button>
 
-            {/* Hamburger — mobile only */}
+            {/* Hamburger */}
             <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className={`md:hidden flex flex-col gap-1.25 justify-center items-center w-9 h-9 rounded-full bg-transparent border-0 cursor-pointer transition-colors duration-200 hover:bg-black/5 ${menuOpen ? "ham-open" : ""}`}
-              aria-label="Menu"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className={`md:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5 ${menuOpen ? "ham-open" : ""}`}
             >
               <span className="hamburger-line" />
               <span className="hamburger-line" />
@@ -167,47 +177,66 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* ── MOBILE DROPDOWN ── */}
+        {/* Mobile Menu */}
         {menuOpen && (
-          <div
-            className="mobile-menu-open md:hidden flex flex-col px-4 pb-4 border-t"
-            style={{
-              background: "#fdf0ee",
-              borderColor: "#edddd7",
-            }}
-          >
-            {NAV_LINKS.map((link) => {
-              const isActive = active === link;
-              return (
-                <Link
-                  key={link}
-                  to="/shop"
-                  onClick={() => { setActive(link); setMenuOpen(false); }}
-                  className="text-left px-4 py-3 text-sm rounded-xl border-0 cursor-pointer transition-all duration-150"
-                  style={{
-                    fontFamily: "'Jost', sans-serif",
-                    fontWeight: isActive ? "400" : "300",
-                    color: isActive ? "#2e2420" : "#9e8a85",
-                    letterSpacing: "0.04em",
-                    background: isActive ? "rgba(168,144,136,0.1)" : "transparent",
-                  }}
-                >
-                  {link}
-                </Link>
-              );
-            })}
+          <div className="md:hidden mobile-menu-open border-t px-5 py-4" style={{ background: "#fdf0ee" }}>
+            {NAV_LINKS.map(({ label, category }) => (
+              <button
+                key={label}
+                onClick={() => handleCategoryClick(label, category)}
+                className="w-full text-left py-3 px-4 rounded-xl text-sm"
+                style={{
+                  fontWeight: active === label ? "500" : "400",
+                  color: active === label ? "#2e2420" : "#9e8a85",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+
+            {/* Mobile Auth Links */}
+            <div className="border-t mt-4 pt-4 space-y-2">
+              {!isAuthenticated ? (
+                <>
+                  <button
+                    onClick={() => { navigate('/auth/login'); setMenuOpen(false); }}
+                    className="w-full text-left py-3 px-4 rounded-xl text-sm font-medium"
+                    style={{ color: "#2e2420" }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => { navigate('/auth/signup'); setMenuOpen(false); }}
+                    className="w-full text-left py-3 px-4 rounded-xl text-sm font-medium"
+                    style={{ color: "#2e2420" }}
+                  >
+                    Sign Up
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { handleCartClick(); setMenuOpen(false); }}
+                    className="w-full text-left py-3 px-4 rounded-xl text-sm font-medium flex items-center justify-between"
+                    style={{ color: "#2e2420" }}
+                  >
+                    Cart {cartCount > 0 && <span className="bg-[#a89088] text-white px-2 py-1 rounded-full text-xs">{cartCount}</span>}
+                  </button>
+                  <button
+                    onClick={() => { handleAccountClick(); setMenuOpen(false); }}
+                    className="w-full text-left py-3 px-4 rounded-xl text-sm font-medium"
+                    style={{ color: "#2e2420" }}
+                  >
+                    {user?.role === 'admin' ? 'Admin Dashboard' : 'My Account'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </nav>
 
-      {/* Overlay */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 top-16 z-40 md:hidden"
-          style={{ background: "rgba(46,36,32,0.15)" }}
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
+      {menuOpen && <div className="fixed inset-0 bg-black/20 z-40 md:hidden" onClick={() => setMenuOpen(false)} />}
     </>
   );
 }

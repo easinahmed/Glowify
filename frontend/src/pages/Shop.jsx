@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { fetchProducts } from '../api/api'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { fetchProducts } from '../api/api';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap');
@@ -13,199 +15,114 @@ const styles = `
   .anim-1 { animation: fadeUp 0.5s 0.0s ease both; }
   .anim-2 { animation: fadeUp 0.5s 0.05s ease both; }
   .anim-3 { animation: fadeUp 0.5s 0.1s ease both; }
-  .anim-4 { animation: fadeUp 0.5s 0.15s ease both; }
-  .anim-5 { animation: fadeUp 0.5s 0.2s ease both; }
-  .anim-6 { animation: fadeUp 0.5s 0.25s ease both; }
-
-  .product-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-  .product-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(100,60,50,0.1) !important; }
-  .product-card img { transition: transform 0.5s ease; }
-  .product-card:hover img { transform: scale(1.04); }
-
-  .range-input {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 2px;
-    background: #d4c4be;
-    outline: none;
-    border-radius: 2px;
-  }
-  .range-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #7a5c56;
-    cursor: pointer;
-  }
-  .range-input::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #7a5c56;
-    cursor: pointer;
-    border: none;
-  }
-
-  .page-btn { transition: all 0.2s ease; }
-  .page-btn:hover { background: #f0e4de !important; }
-
-  .clear-btn { transition: all 0.2s ease; }
-  .clear-btn:hover { background: #5e4540 !important; }
 `;
 
 const CATEGORIES = ["CLEANSER", "SERUM", "MOISTURIZER", "TONER", "RITUAL"];
-const SKIN_TYPES = ["ALL"];
 const SORT_OPTIONS = ["Newest Arrivals", "Price: Low to High", "Price: High to Low"];
 
 export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [checkedCats, setCheckedCats] = useState([]);
-  const [activeSkin, setActiveSkin] = useState("ALL");
   const [priceMax, setPriceMax] = useState(200);
   const [sort, setSort] = useState("Newest Arrivals");
   const [sortOpen, setSortOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const limit = 9;
+
+  const urlCategory = searchParams.get('category');
+
+  // Sync with URL and clear filters when "Shop All" is clicked
+  useEffect(() => {
+    if (urlCategory) {
+      setCheckedCats([urlCategory]);
+    } else {
+      setCheckedCats([]);        // Important: Clear when no category in URL
+    }
+  }, [urlCategory]);
 
   const categoryParam = checkedCats.length ? checkedCats.join('|') : undefined;
-  const sortParam = sort === 'Price: Low to High'
-    ? 'priceAsc'
-    : sort === 'Price: High to Low'
-      ? 'priceDesc'
-      : sort === 'Newest Arrivals'
-        ? 'newest'
-        : undefined;
+  
+  const sortParam = sort === 'Price: Low to High' ? 'priceAsc' 
+                 : sort === 'Price: High to Low' ? 'priceDesc' 
+                 : 'newest';
 
-  const { data: products = [], isLoading, isError } = useQuery({
-    queryKey: ['products', categoryParam, priceMax, sortParam],
-    queryFn: () => fetchProducts({ category: categoryParam, maxPrice: priceMax, sort: sortParam }),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['products', categoryParam, priceMax, sortParam, currentPage],
+    queryFn: () => fetchProducts({ 
+      category: categoryParam, 
+      maxPrice: priceMax, 
+      sort: sortParam,
+      page: currentPage,
+      limit 
+    }),
     keepPreviousData: true,
   });
 
+  const products = data?.products || data || [];
+  const totalPages = data?.totalPages || Math.ceil((data?.total || 0) / limit) || 1;
+
   const toggleCat = (cat) => {
-    setCheckedCats((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    );
+    const newCats = checkedCats.includes(cat) ? [] : [cat];
+    setCheckedCats(newCats);
+    setCurrentPage(1);
+
+    if (newCats.length > 0) {
+      setSearchParams({ category: newCats[0] });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const clearFilters = () => {
     setCheckedCats([]);
-    setActiveSkin("ALL");
     setPriceMax(200);
     setSort("Newest Arrivals");
+    setCurrentPage(1);
+    setSearchParams({});           // Clear URL
   };
 
-  // Since products don't have skinType, we'll just return all products
-  // The category filtering is handled by the API
-  const filtered = products;
+  const handleSortChange = (newSort) => {
+    setSort(newSort);
+    setSortOpen(false);
+    setCurrentPage(1);
+  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
-        <p className="text-base text-[#7a5c56]">Loading products...</p>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#fdf6f2' }}>
-        <p className="text-base text-[#b6403b]">Unable to load products. Please try again.</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fdf6f2]">Loading products...</div>;
+  if (isError) return <div className="min-h-screen flex items-center justify-center bg-[#fdf6f2]">Failed to load products.</div>;
 
   return (
     <>
       <style>{styles}</style>
+      <div className="min-h-screen w-full" style={{ background: "#fdf6f2", fontFamily: "'Jost', sans-serif" }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
 
-      <div
-        className="min-h-screen w-full"
-        style={{ background: "#fdf6f2", fontFamily: "'Jost', sans-serif" }}
-      >
-        <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-14 py-10 md:py-14">
-
-          {/* ── Breadcrumb ── */}
-          <p
-            className="anim-1 text-[11px] tracking-[0.12em] uppercase mb-5"
-            style={{ color: "#9e8a85", fontWeight: "300" }}
-          >
-            Home &nbsp;›&nbsp; Shop All
+          <p className="anim-1 text-xs tracking-widest uppercase mb-6 text-[#9e8a85]">
+            Home › Shop All
           </p>
 
-          {/* ── Page Header + Sort ── */}
-          <div className="anim-2 flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
             <div>
-              <h1
-                className="mb-2"
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontWeight: "400",
-                  fontSize: "clamp(2rem, 4vw, 2.6rem)",
-                  color: "#2e2420",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Curated Essentials
-              </h1>
-              <p
-                className="text-sm leading-relaxed"
-                style={{
-                  fontWeight: "300",
-                  color: "#9e8a85",
-                  maxWidth: "380px",
-                  letterSpacing: "0.01em",
-                }}
-              >
-                Harness the power of nature and science to reveal your most radiant
-                self through intentional rituals.
-              </p>
+              <h1 className="text-4xl md:text-5xl font-serif text-[#2e2420]">Curated Essentials</h1>
+              <p className="text-[#9e8a85] mt-2">Nature meets science in intentional rituals.</p>
             </div>
 
-            {/* Sort Dropdown */}
-            <div className="relative shrink-0">
-              <div
-                className="flex items-center gap-3 text-xs"
-                style={{ color: "#9e8a85" }}
+            <div className="relative">
+              <button
+                onClick={() => setSortOpen(!sortOpen)}
+                className="flex items-center gap-2 px-5 py-3 border rounded-full text-sm bg-white"
+                style={{ borderColor: "#d4c4be" }}
               >
-                <span className="tracking-widest uppercase text-[10px]">Sort by:</span>
-                <button
-                  onClick={() => setSortOpen((o) => !o)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full border bg-transparent cursor-pointer text-sm"
-                  style={{
-                    borderColor: "#d4c4be",
-                    color: "#2e2420",
-                    fontFamily: "'Jost', sans-serif",
-                    fontWeight: "300",
-                  }}
-                >
-                  {sort}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-              </div>
+                {sort} ↓
+              </button>
+
               {sortOpen && (
-                <div
-                  className="absolute right-0 top-10 z-20 rounded-2xl overflow-hidden w-48"
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #e8d5ce",
-                    boxShadow: "0 8px 30px rgba(100,60,50,0.1)",
-                  }}
-                >
-                  {SORT_OPTIONS.map((opt) => (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border z-50 overflow-hidden">
+                  {SORT_OPTIONS.map(opt => (
                     <button
                       key={opt}
-                      onClick={() => { setSort(opt); setSortOpen(false); }}
-                      className="w-full text-left px-5 py-3 text-sm border-0 bg-transparent cursor-pointer transition-colors duration-150 hover:bg-[#fdf0ee]"
-                      style={{
-                        fontFamily: "'Jost', sans-serif",
-                        fontWeight: sort === opt ? "400" : "300",
-                        color: sort === opt ? "#2e2420" : "#9e8a85",
-                      }}
+                      onClick={() => handleSortChange(opt)}
+                      className={`w-full text-left px-6 py-3.5 hover:bg-[#fdf0ee] ${sort === opt ? 'font-medium bg-[#f9ece6]' : ''}`}
                     >
                       {opt}
                     </button>
@@ -215,233 +132,83 @@ export default function Shop() {
             </div>
           </div>
 
-          {/* ── Main Layout ── */}
-          <div className="flex flex-col lg:flex-row gap-10">
-
-            {/* ── Sidebar Filters ── */}
-            <aside className="lg:w-52 shrink-0 anim-3">
-
-              {/* Category */}
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+            {/* Filters */}
+            <aside className="lg:w-64 shrink-0">
               <div className="mb-8">
-                <p
-                  className="text-[10px] tracking-widest uppercase mb-4"
-                  style={{ fontWeight: "500", color: "#2e2420" }}
-                >
-                  Category
-                </p>
-                <div className="flex flex-col gap-3">
-                  {CATEGORIES.map((cat) => (
-                    <label
-                      key={cat}
-                      className="flex items-center gap-3 cursor-pointer"
-                    >
-                      <div
-                        onClick={() => toggleCat(cat)}
-                        className="w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer transition-all duration-150"
-                        style={{
-                          border: checkedCats.includes(cat)
-                            ? "none"
-                            : "1px solid #c4ada7",
-                          background: checkedCats.includes(cat)
-                            ? "#7a5c56"
-                            : "transparent",
-                        }}
-                      >
-                        {checkedCats.includes(cat) && (
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
-                            stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="2 6 5 9 10 3" />
-                          </svg>
-                        )}
-                      </div>
-                      <span
-                        className="text-sm cursor-pointer"
-                        onClick={() => toggleCat(cat)}
-                        style={{
-                          fontWeight: checkedCats.includes(cat) ? "400" : "300",
-                          color: checkedCats.includes(cat) ? "#2e2420" : "#9e8a85",
-                        }}
-                      >
-                        {cat}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <p className="uppercase text-xs tracking-widest mb-4 font-medium">Category</p>
+                {CATEGORIES.map(cat => (
+                  <label key={cat} className="flex items-center gap-3 mb-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checkedCats.includes(cat)}
+                      onChange={() => toggleCat(cat)}
+                      className="w-4 h-4 accent-[#7a5c56]"
+                    />
+                    <span className="text-sm">{cat}</span>
+                  </label>
+                ))}
               </div>
 
-              {/* Skin Type */}
               <div className="mb-8">
-                <p
-                  className="text-[10px] tracking-widest uppercase mb-4"
-                  style={{ fontWeight: "500", color: "#2e2420" }}
-                >
-                  Skin Type
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {SKIN_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setActiveSkin(type)}
-                      className="rounded-full px-3 py-1.5 text-[10px] tracking-widest uppercase border bg-transparent cursor-pointer transition-all duration-150"
-                      style={{
-                        borderColor: activeSkin === type ? "#7a5c56" : "#d4c4be",
-                        color: activeSkin === type ? "#5e4540" : "#9e8a85",
-                        background: activeSkin === type
-                          ? "rgba(122,92,86,0.08)"
-                          : "transparent",
-                        fontFamily: "'Jost', sans-serif",
-                        fontWeight: activeSkin === type ? "400" : "300",
-                      }}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price Range */}
-              <div className="mb-8">
-                <p
-                  className="text-[10px] tracking-widest uppercase mb-4"
-                  style={{ fontWeight: "500", color: "#2e2420" }}
-                >
-                  Price Range
-                </p>
+                <p className="uppercase text-xs tracking-widest mb-4 font-medium">Price</p>
                 <input
                   type="range"
                   min={0}
                   max={200}
                   value={priceMax}
-                  onChange={(e) => setPriceMax(Number(e.target.value))}
-                  className="range-input mb-3"
+                  onChange={(e) => { setPriceMax(Number(e.target.value)); setCurrentPage(1); }}
+                  className="w-full accent-[#7a5c56]"
                 />
-                <div
-                  className="flex justify-between text-xs"
-                  style={{ fontWeight: "300", color: "#9e8a85" }}
-                >
+                <div className="flex justify-between text-xs mt-2 text-[#9e8a85]">
                   <span>$0</span>
-                  <span>${priceMax === 200 ? "200+" : priceMax}</span>
+                  <span>${priceMax}</span>
                 </div>
               </div>
 
-              {/* Clear Filters */}
-              <button
+              <button 
                 onClick={clearFilters}
-                className="clear-btn w-full rounded-xl py-3 text-[11px] tracking-[0.18em] uppercase text-white border-0 cursor-pointer"
-                style={{
-                  fontFamily: "'Jost', sans-serif",
-                  fontWeight: "400",
-                  background: "linear-gradient(135deg, #7a5c56 0%, #5e4540 100%)",
-                }}
+                className="w-full py-3 bg-[#5e4540] text-white rounded-xl text-sm tracking-widest hover:bg-[#4a3632]"
               >
-                Clear Filters
+                CLEAR ALL FILTERS
               </button>
             </aside>
 
-            {/* ── Product Grid ── */}
+            {/* Products Grid */}
             <div className="flex-1">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                {filtered.map((product, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+                {products.map((product, i) => (
                   <Link
-                    key={product._id || product.id}
-                    to={`/shop/${product._id || product.id}`}
-                    className={`product-card rounded-2xl overflow-hidden cursor-pointer anim-${Math.min(i + 1, 6)}`}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #f0e4df",
-                      boxShadow: "0 2px 12px rgba(100,60,50,0.05)",
-                      textDecoration: 'none',
-                    }}
+                    key={product._id}
+                    to={`/shop/${product._id}`}
+                    className="product-card rounded-2xl overflow-hidden bg-white border border-[#f0e4df] group"
                   >
-                    {/* Image */}
-                    <div
-                      className="w-full overflow-hidden"
-                      style={{ aspectRatio: "1/1" }}
-                    >
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="aspect-square overflow-hidden">
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     </div>
-
-                    {/* Info */}
-                    <div className="px-4 py-4">
-                      <p
-                        className="text-[9px] tracking-[0.16em] uppercase mb-1.5"
-                        style={{ fontWeight: "400", color: "#9e8a85" }}
-                      >
-                        {product.category}
-                      </p>
-                      <h3
-                        className="mb-1.5 leading-snug"
-                        style={{
-                          fontFamily: "'Cormorant Garamond', serif",
-                          fontWeight: "400",
-                          fontSize: "1.05rem",
-                          color: "#2e2420",
-                        }}
-                      >
-                        {product.name}
-                      </h3>
-                      <p
-                        className="text-sm"
-                        style={{ fontWeight: "400", color: "#2e2420" }}
-                      >
-                        ${product.price}.00
-                      </p>
+                    <div className="p-4">
+                      <p className="text-xs uppercase tracking-widest text-[#9e8a85]">{product.category}</p>
+                      <h3 className="font-serif text-base md:text-lg mt-1 mb-1 leading-tight">{product.name}</h3>
+                      <p className="font-medium">${product.price}</p>
                     </div>
                   </Link>
                 ))}
               </div>
 
-              {/* ── Pagination ── */}
-              <div className="flex items-center justify-center gap-2 mt-14">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="page-btn w-9 h-9 rounded-full flex items-center justify-center border bg-transparent cursor-pointer"
-                  style={{ borderColor: "#d4c4be", color: "#9e8a85" }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
+              {products.length === 0 && (
+                <p className="text-center py-20 text-gray-500">No products found.</p>
+              )}
 
-                {[1, 2, 3].map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className="page-btn w-9 h-9 rounded-full flex items-center justify-center border text-sm cursor-pointer transition-all duration-200"
-                    style={{
-                      fontFamily: "'Jost', sans-serif",
-                      fontWeight: currentPage === page ? "400" : "300",
-                      borderColor: currentPage === page ? "transparent" : "#d4c4be",
-                      background: currentPage === page
-                        ? "linear-gradient(135deg, #7a5c56 0%, #5e4540 100%)"
-                        : "transparent",
-                      color: currentPage === page ? "#fff" : "#9e8a85",
-                      boxShadow: currentPage === page
-                        ? "0 4px 14px rgba(90,60,55,0.28)"
-                        : "none",
-                    }}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(3, p + 1))}
-                  className="page-btn w-9 h-9 rounded-full flex items-center justify-center border bg-transparent cursor-pointer"
-                  style={{ borderColor: "#d4c4be", color: "#9e8a85" }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              </div>
-
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-3 mt-16">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage === 1} className="px-5 py-2 border rounded-xl disabled:opacity-50">Previous</button>
+                  {Array.from({ length: totalPages }, (_, i) => i+1).map(page => (
+                    <button key={page} onClick={() => setCurrentPage(page)} className={`w-10 h-10 rounded-xl ${currentPage === page ? 'bg-[#7a5c56] text-white' : 'border hover:bg-gray-100'}`}>{page}</button>
+                  ))}
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={currentPage === totalPages} className="px-5 py-2 border rounded-xl disabled:opacity-50">Next</button>
+                </div>
+              )}
             </div>
           </div>
         </div>

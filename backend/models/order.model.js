@@ -16,7 +16,7 @@ const orderSchema = new Schema(
   {
     customer: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Customer',
       required: true
     },
     customerName: { type: String, required: true },
@@ -31,7 +31,6 @@ const orderSchema = new Schema(
     shippingAddress: {
       street: { type: String, required: true },
       city: { type: String, required: true },
-      state: { type: String, required: true },
       zipCode: { type: String, required: true },
       country: { type: String, default: 'USA' }
     },
@@ -42,13 +41,5 @@ const orderSchema = new Schema(
     timestamps: true,
   }
 );
-
-// Generate order number before saving
-orderSchema.pre('save', function(next) {
-  if (!this.orderNumber) {
-    this.orderNumber = 'GL-' + Date.now().toString().slice(-6);
-  }
-  next();
-});
 
 module.exports = model('Order', orderSchema);

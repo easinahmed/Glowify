@@ -5,8 +5,18 @@ const Product = require('../models/product.model');
 // Get all orders
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('customer', 'username email')
+    let filter = {};
+
+    if (req.user.role !== 'admin') {
+      const customer = await Customer.findOne({ user: req.user._id });
+      if (!customer) {
+        return res.status(200).json({ success: true, data: [], count: 0 });
+      }
+      filter.customer = customer._id;
+    }
+
+    const orders = await Order.find(filter)
+      .populate('customer', 'name email totalSpent orders status')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -27,14 +37,18 @@ const getAllOrders = async (req, res) => {
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('customer', 'username email')
-      .populate('items.product', 'name image');
+      .populate('customer', 'name email totalSpent orders status')
+      .populate('items.product', 'name image price');
 
     if (!order) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
+    }
+
+    if (req.user.role !== 'admin' && order.customer.user?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     res.status(200).json({
@@ -53,27 +67,42 @@ const getOrderById = async (req, res) => {
 // Create new order
 const createOrder = async (req, res) => {
   try {
-    const { customer, customerName, customerEmail, items, totalAmount, shippingAddress, paymentMethod } = req.body;
+    const { customerName, customerEmail, items, totalAmount, shippingAddress, paymentMethod } = req.body;
 
-    // Validate required fields
-    if (!customer || !customerName || !customerEmail || !items || !totalAmount || !shippingAddress) {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
+    if (!customerName || !customerEmail || !items || !totalAmount || !shippingAddress) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
       });
     }
 
-    // Check if customer exists
-    const customerExists = await Customer.findById(customer);
+    let customerExists = await Customer.findOne({ user: req.user._id });
     if (!customerExists) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
+      const existingCustomerByEmail = await Customer.findOne({ email: customerEmail });
+      if (existingCustomerByEmail) {
+        customerExists = existingCustomerByEmail;
+      } else {
+        customerExists = await Customer.create({
+          user: req.user._id,
+          name: customerName,
+          email: customerEmail,
+          avatar: `https://i.pravatar.cc/40?u=${customerName.toLowerCase().replace(/\s+/g, '')}`,
+          joinDate: new Date(),
+          totalSpent: 0,
+          orders: 0,
+          status: 'Active'
+        });
+      }
     }
 
     // Validate products and calculate total
     let calculatedTotal = 0;
+    const enrichedItems = [];
+    
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
@@ -88,22 +117,33 @@ const createOrder = async (req, res) => {
           message: `Insufficient stock for ${product.name}`
         });
       }
+      
       calculatedTotal += product.price * item.quantity;
+
+      // Enrich item with product details
+      enrichedItems.push({
+        product: product._id,
+        name: product.name,
+        price: product.price,
+        quantity: item.quantity,
+        image: product.image
+      });
 
       // Update product stock
       product.stock -= item.quantity;
       await product.save();
     }
 
-    // Create order
+    // Create order with enriched items
     const order = new Order({
-      customer,
+      customer: customerExists._id,
       customerName,
       customerEmail,
-      items,
+      items: enrichedItems,
       totalAmount: calculatedTotal,
       shippingAddress,
-      paymentMethod: paymentMethod || 'Credit Card'
+      paymentMethod: paymentMethod || 'Credit Card',
+      orderNumber: 'GL-' + Date.now().toString().slice(-6)
     });
 
     await order.save();
@@ -114,7 +154,7 @@ const createOrder = async (req, res) => {
     await customerExists.save();
 
     const populatedOrder = await Order.findById(order._id)
-      .populate('customer', 'username email')
+      .populate('customer', 'name email totalSpent orders status')
       .populate('items.product', 'name image');
 
     res.status(201).json({
@@ -123,6 +163,7 @@ const createOrder = async (req, res) => {
       message: 'Order created successfully'
     });
   } catch (error) {
+    console.error('Order creation error:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating order',
@@ -147,7 +188,7 @@ const updateOrderStatus = async (req, res) => {
       req.params.id,
       { status },
       { new: true }
-    ).populate('customer', 'username email');
+    ).populate('customer', 'name email totalSpent orders status');
 
     if (!order) {
       return res.status(404).json({

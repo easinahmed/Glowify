@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect, authorize } = require('../middlewares/auth.middleware');
 const {
   getAllOrders,
   getOrderById,
@@ -9,22 +10,22 @@ const {
   getOrderStats
 } = require('../controllers/order.controller');
 
-// Get all orders
-router.get('/', getAllOrders);
+// Create new order (authenticated users)
+router.post('/', protect, createOrder);
 
-// Get order statistics
-router.get('/stats', getOrderStats);
+// Get order statistics (admin only)
+router.get('/stats', protect, authorize('admin'), getOrderStats);
+
+// Get all orders (admin sees all; users see own orders)
+router.get('/', protect, getAllOrders);
 
 // Get order by ID
-router.get('/:id', getOrderById);
+router.get('/:id', protect, getOrderById);
 
-// Create new order
-router.post('/', createOrder);
+// Update order status (admin only)
+router.put('/:id/status', protect, authorize('admin'), updateOrderStatus);
 
-// Update order status
-router.put('/:id/status', updateOrderStatus);
-
-// Delete order
-router.delete('/:id', deleteOrder);
+// Delete order (admin only)
+router.delete('/:id', protect, authorize('admin'), deleteOrder);
 
 module.exports = router;

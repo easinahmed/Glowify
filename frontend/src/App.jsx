@@ -17,6 +17,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminOrders from './pages/admin/AdminOrders'
 import Customers from './pages/admin/Customers'
 import Inventory from './pages/admin/Inventory'
+import OrderSuccess from './pages/OrderSuccess'
 
 const router = createBrowserRouter([
   {
@@ -47,17 +48,24 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
+    element: <MainLayout />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: 'shop', element: <Shop /> },
+      { path: 'shop/:id', element: <ProductDetails /> },
+      { path: 'ordersuccess', element: <OrderSuccess /> },
+    ]
+  },
+  {
+    path: '/user',
     element: (
       <ProtectedRoute>
         <MainLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Home /> },
-      { path: 'shop', element: <Shop /> },
-      { path: 'shop/:id', element: <ProductDetails /> },
-      { path: 'user/cart', element: <Cart /> },
-      { path: 'user/dashboard', element: <Dashboard /> },
+      { path: 'cart', element: <Cart /> },
+      { path: 'dashboard', element: <Dashboard /> },
     ]
   },
   { path: '*', element: <ErrorPage /> }

@@ -135,7 +135,7 @@ exports.seedProducts = async (req, res) => {
 
 exports.addProduct = async (req, res) => {
   try {
-    const { name, description, category, price, image, stock } = req.body;
+    const { name, description, category, price, image, stock, additionalImages, keyActives, ritualSteps } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ message: 'Name and price are required' });
@@ -151,6 +151,9 @@ exports.addProduct = async (req, res) => {
       image,
       stock,
       slug,
+      additionalImages,
+      keyActives,
+      ritualSteps,
     });
 
     const savedProduct = await product.save();
@@ -164,7 +167,7 @@ exports.addProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, category, price, image, stock } = req.body;
+    const { name, description, category, price, image, stock, additionalImages, keyActives, ritualSteps } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ message: 'Name and price are required' });
@@ -182,6 +185,9 @@ exports.updateProduct = async (req, res) => {
         image,
         stock,
         slug,
+        additionalImages,
+        keyActives,
+        ritualSteps,
       },
       { new: true }
     );

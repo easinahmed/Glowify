@@ -10,11 +10,13 @@ import {
   ArrowUp,
   LogOut
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchProducts, fetchOrderStats, fetchCustomerStats } from '../../api/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { fetchProducts, fetchOrderStats, fetchCustomerStats, logoutUser } from '../../api/api';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts
@@ -29,6 +31,19 @@ export default function AdminDashboard() {
     queryKey: ['customerStats'],
     queryFn: fetchCustomerStats
   });
+
+  const logoutMutation = useMutation({
+    mutationFn: logoutUser,
+    onSuccess: () => {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      navigate('/auth/login');
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const totalProducts = Array.isArray(productsData) ? productsData.length : productsData?.data?.length || 0;
   const totalOrders = orderStats?.data?.totalOrders || 0;
@@ -73,8 +88,12 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="font-medium">Admin</p>
-              <button className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1">
-                <LogOut className="w-3 h-3" /> Sign Out
+              <button 
+                onClick={handleLogout}
+                disabled={logoutMutation.isLoading}
+                className="text-xs text-gray-500 hover:text-red-600 disabled:text-gray-400 flex items-center gap-1 transition-colors"
+              >
+                <LogOut className="w-3 h-3" /> {logoutMutation.isLoading ? 'Signing out...' : 'Sign Out'}
               </button>
             </div>
           </div>
