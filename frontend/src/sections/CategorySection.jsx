@@ -27,25 +27,25 @@ const CATEGORIES = [
   {
     name: "Cleansers",
     desc: "Pure, gentle foundations.",
-    image: "/src/assets/category_1.png",
+    image: "/images/category_1.png",
     anim: "anim-2",
   },
   {
     name: "Serums",
     desc: "Concentrated nourishment.",
-    image: "/src/assets/category_2.png",
+    image: "/images/category_2.png",
     anim: "anim-3",
   },
   {
     name: "Moisturizers",
     desc: "Lock in the glow.",
-    image: "/src/assets/category_3.png",
+    image: "/images/category_3.png",
     anim: "anim-4",
   },
   {
     name: "Sunscreen",
     desc: "Daily environmental shield.",
-    image: "/src/assets/category_4.png",
+    image: "/images/category_4.png",
     anim: "anim-5",
   },
 ];

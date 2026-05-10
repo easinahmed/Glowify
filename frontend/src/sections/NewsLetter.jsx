@@ -138,7 +138,7 @@ export default function NewsLetter() {
               style={{ minHeight: "280px" }}
             >
               <img
-                src="/src/assets/newsletter.png"
+                src="/images/newsletter.png"
                 alt="Woman with glowing skin"
                 className="w-full h-full object-cover object-center"
                 style={{ minHeight: "280px" }}

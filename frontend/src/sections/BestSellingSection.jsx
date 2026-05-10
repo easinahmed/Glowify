@@ -46,7 +46,7 @@ const PRODUCTS = [
     badge: "BESTSELLER",
     badgeColor: "#e8d5ce",
     badgeText: "#7a5c56",
-    image: "/src/assets/best_1.png",
+    image: "/images/best_1.png",
     anim: "anim-2",
   },
   {
@@ -55,7 +55,7 @@ const PRODUCTS = [
     subtitle: "Deep Repair",
     price: "$58.00",
     badge: null,
-    image: "/src/assets/best_2.png ",
+    image: "/images/best_2.png ",
     anim: "anim-3",
   },
   {
@@ -64,7 +64,7 @@ const PRODUCTS = [
     subtitle: "Calm & Balance",
     price: "$32.00",
     badge: null,
-    image: "/src/assets/best_3.png",
+    image: "/images/best_3.png",
     anim: "anim-4",
   },
   {
@@ -75,7 +75,7 @@ const PRODUCTS = [
     badge: "NEW ARRIVAL",
     badgeColor: "#ddeadd",
     badgeText: "#4a6b4a",
-    image: "/src/assets/best_4.png",
+    image: "/images/best_4.png",
     anim: "anim-5",
   },
 ];
