@@ -26,24 +26,28 @@ const styles = `
 const CATEGORIES = [
   {
     name: "Cleansers",
+    category: "CLEANSER",
     desc: "Pure, gentle foundations.",
     image: "/images/category_1.png",
     anim: "anim-2",
   },
   {
     name: "Serums",
+    category: "SERUM",
     desc: "Concentrated nourishment.",
     image: "/images/category_2.png",
     anim: "anim-3",
   },
   {
     name: "Moisturizers",
+    category: "MOISTURIZER",
     desc: "Lock in the glow.",
     image: "/images/category_3.png",
     anim: "anim-4",
   },
   {
-    name: "Sunscreen",
+    name: "Toner",
+    category: "TONER",
     desc: "Daily environmental shield.",
     image: "/images/category_4.png",
     anim: "anim-5",
@@ -104,7 +108,7 @@ export default function CategorySection() {
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.name}
-                to="/shop"
+                to={`/shop?category=${cat.category}`}
                 className={`category-card cursor-pointer group ${cat.anim}`}
               >
                 {/* Image */}
