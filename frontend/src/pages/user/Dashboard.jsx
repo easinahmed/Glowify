@@ -10,9 +10,12 @@ import {
   CreditCard, 
   MapPin, 
   LogOut,
-  Droplet
+  Droplet,
+  CheckCircle2,
+  XCircle,
+  Truck
 } from 'lucide-react';
-import { getCurrentUser, logoutUser } from '../../api/api';
+import { getCurrentUser, logoutUser, fetchOrders } from '../../api/api';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Dashboard() {
@@ -24,6 +27,13 @@ export default function Dashboard() {
     queryFn: getCurrentUser,
     retry: false,
   });
+
+  const { data: ordersResponse, isLoading: isOrdersLoading } = useQuery({
+    queryKey: ['myOrders'],
+    queryFn: fetchOrders,
+  });
+
+  const myOrders = ordersResponse?.data || [];
 
   const logoutMutation = useMutation({
     mutationFn: logoutUser,
@@ -143,39 +153,53 @@ export default function Dashboard() {
             <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold text-xl">Order History</h3>
-                <button className="text-sm text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1">
-                  View All <span aria-hidden="true">→</span>
-                </button>
+                
               </div>
 
               <div className="space-y-4">
-                {/* Order 1 */}
-                <div className="flex gap-4 bg-white p-4 rounded-2xl">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
-                    <Package className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">#ORD-28491</p>
-                      <span className="px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">DELIVERED</span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-0.5">Nov 12, 2024</p>
-                  </div>
-                </div>
+                {isOrdersLoading ? (
+                  <p className="text-gray-500 text-sm">Loading order history...</p>
+                ) : myOrders.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No orders placed yet.</p>
+                ) : (
+                  myOrders.slice(0, 5).map((order) => {
+                    let statusConfig = { icon: Package, bg: 'bg-gray-100', text: 'text-gray-600', label: order.status };
+                    
+                    if (order.status === 'DELIVERED') {
+                      statusConfig = { icon: CheckCircle2, bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'DELIVERED' };
+                    } else if (order.status === 'SHIPPED') {
+                      statusConfig = { icon: Truck, bg: 'bg-blue-100', text: 'text-blue-700', label: 'SHIPPED' };
+                    } else if (order.status === 'PENDING') {
+                      statusConfig = { icon: Clock, bg: 'bg-amber-100', text: 'text-amber-700', label: 'PROCESSING' };
+                    } else if (order.status === 'CANCELLED') {
+                      statusConfig = { icon: XCircle, bg: 'bg-rose-100', text: 'text-rose-700', label: 'CANCELLED' };
+                    }
 
-                {/* Order 2 */}
-                <div className="flex gap-4 bg-white p-4 rounded-2xl">
-                  <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
-                    <Droplet className="w-6 h-6 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">#ORD-28504</p>
-                      <span className="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-600 rounded-full">PROCESSING</span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-0.5">Nov 18, 2024</p>
-                  </div>
-                </div>
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <div key={order._id} className="flex gap-4 bg-white p-4 rounded-2xl border border-gray-50">
+                        <div className={`w-12 h-12 ${statusConfig.bg} rounded-2xl flex items-center justify-center shrink-0`}>
+                          <StatusIcon className={`w-6 h-6 ${statusConfig.text}`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{order.orderNumber}</p>
+                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusConfig.bg} ${statusConfig.text}`}>
+                              {statusConfig.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p className="text-sm text-gray-500">
+                              {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                            <p className="text-sm font-medium text-gray-700">${order.totalAmount?.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
