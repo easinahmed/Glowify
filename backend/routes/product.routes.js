@@ -3,6 +3,7 @@ const {
   getProducts,
   getProductById,
   getCategories,
+  getBestSellers,
   seedProducts,
   addProduct,
   updateProduct,
@@ -12,6 +13,7 @@ const {
 router.get('/seed', seedProducts);
 router.get('/', getProducts);
 router.get('/categories', getCategories);
+router.get('/best-sellers', getBestSellers);
 router.get('/:id', getProductById);
 router.post('/', addProduct);
 router.put('/:id', updateProduct);

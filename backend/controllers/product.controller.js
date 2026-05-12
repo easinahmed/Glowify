@@ -95,6 +95,60 @@ exports.getProducts = async (req, res) => {
   }
 };
 
+exports.getBestSellers = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 4;
+
+    // Aggregate best sellers from order data
+    const Order = require('../models/order.model');
+    const bestSellerAgg = await Order.aggregate([
+      { $match: { status: { $ne: 'CANCELLED' } } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQuantitySold: { $sum: '$items.quantity' },
+        },
+      },
+      { $sort: { totalQuantitySold: -1 } },
+      { $limit: limit },
+    ]);
+
+    let products;
+
+    if (bestSellerAgg.length >= limit) {
+      // We have enough order data — use aggregated results
+      const productIds = bestSellerAgg.map((item) => item._id);
+      const productDocs = await Product.find({ _id: { $in: productIds } });
+
+      // Preserve the sorted order from aggregation
+      const productMap = {};
+      productDocs.forEach((p) => {
+        productMap[p._id.toString()] = p;
+      });
+
+      products = bestSellerAgg.map((item) => {
+        const p = productMap[item._id.toString()];
+        if (!p) return null;
+        return {
+          ...p.toObject(),
+          totalSold: item.totalQuantitySold,
+        };
+      }).filter(Boolean);
+    } else {
+      // Fallback: use totalSold field, then newest products
+      products = await Product.find()
+        .sort({ totalSold: -1, createdAt: -1 })
+        .limit(limit);
+    }
+
+    res.json(products);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unable to fetch best sellers', error: error.message });
+  }
+};
+
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);

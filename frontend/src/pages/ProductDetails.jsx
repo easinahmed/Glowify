@@ -46,7 +46,7 @@ export default function ProductDetails() {
     },
     onError: (error) => {
       if (error?.response?.status === 401) {
-        navigate('/auth/login');
+        navigate('/login');
       }
     }
   });

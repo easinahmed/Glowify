@@ -33,6 +33,11 @@ const productSchema = new Schema({
     default: 20,
     min: 0 
   },
+  totalSold: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   keyActives: [{
     icon: { type: String, default: "✦" },
     name: { type: String },

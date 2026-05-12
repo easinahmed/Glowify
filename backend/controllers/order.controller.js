@@ -130,8 +130,9 @@ const createOrder = async (req, res) => {
         image: product.image
       });
 
-      // Update product stock
+      // Update product stock and sales count
       product.stock -= item.quantity;
+      product.totalSold = (product.totalSold || 0) + item.quantity;
       await product.save();
     }
 

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// const API_BASE_URL ='https://glowify-9ohb.onrender.com/api'
-const API_BASE_URL ='http://localhost:8080/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -71,6 +71,11 @@ export const fetchProductById = async (productId) => {
 
 export const fetchCategories = async () => {
   const response = await api.get('/products/categories')
+  return response.data
+}
+
+export const fetchBestSellers = async (limit = 4) => {
+  const response = await api.get('/products/best-sellers', { params: { limit } })
   return response.data
 }
 

@@ -77,10 +77,12 @@ const addToCart = async (req, res) => {
       message: 'Item added to cart'
     });
   } catch (error) {
+    console.error('addToCart error:', error);
     res.status(500).json({
       success: false,
       message: 'Error adding to cart',
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 };

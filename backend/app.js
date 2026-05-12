@@ -7,12 +7,12 @@ const orderRoutes = require('./routes/order.routes');
 const customerRoutes = require('./routes/customer.routes');
 const cartRoutes = require('./routes/cart.routes');
 
+require('dotenv').config();
 const app = express();
 
 app.use(
   cors({
-    // origin: "https://glowify-omega.vercel.app",
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']

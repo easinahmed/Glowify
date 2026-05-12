@@ -40,10 +40,11 @@ exports.signup = async (req, res) => {
 
     const encryptedToken = encryptToken(token);
 
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', encryptedToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -74,19 +75,13 @@ exports.login = async (req, res) => {
 
     const token = signToken(user);
     const encryptedToken = encryptToken(token);
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', encryptedToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-    console.log('Setting cookie with options:', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    console.log('NODE_ENV:', process.env.NODE_ENV);
     res.json({ user: sanitizeUser(user) });
   } catch (error) {
     console.error(error);
@@ -95,10 +90,10 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('token', {
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
   });
   return res.json({ message: 'Logged out' });
 };
